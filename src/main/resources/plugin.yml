@@ -2,3 +2,21 @@ name: PermLegend
 version: '${project.version}'
 main: de.freesoccerhdx.permlegend.PermLegend
 api-version: '1.20'
+load: STARTUP
+
+commands:
+  permission:
+    description: Permission Base Command
+    aliases:
+      - perm
+      - perms
+    permission: permissions.command.use
+    permission-message: You do not have permission!
+    usage: /<command>
+
+permissions:
+  permissions.command.use:
+    description: Allows the usage of the base command.
+    default: op
+
+
