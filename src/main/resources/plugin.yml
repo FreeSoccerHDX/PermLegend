@@ -1,0 +1,4 @@
+name: PermLegend
+version: '${project.version}'
+main: de.freesoccerhdx.permlegend.PermLegend
+api-version: '1.20'
