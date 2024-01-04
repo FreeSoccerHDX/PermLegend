@@ -12,7 +12,6 @@ commands:
       - perms
     permission: permissions.command.use
     permission-message: You do not have permission!
-    usage: /<command>
 
 permissions:
   permissions.command.use:
