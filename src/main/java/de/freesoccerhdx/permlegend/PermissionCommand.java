@@ -5,10 +5,14 @@ import de.freesoccerhdx.lib.command.CommandListener;
 import de.freesoccerhdx.lib.command.CustomCommand;
 import de.freesoccerhdx.lib.command.MultiArgument;
 import de.freesoccerhdx.lib.command.TypeArgument;
+import de.freesoccerhdx.lib.command.TypeArgument.IntArgument;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.UUID;
 
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -22,6 +26,7 @@ public class PermissionCommand extends CustomCommand {
 
     private final TypeArgument playerNameOrUUIDProvider;
     private final TypeArgument groupNameProvider;
+    private final TypeArgument permissionsProvider;
 
     private final Plugin plugin;
 
@@ -61,7 +66,20 @@ public class PermissionCommand extends CustomCommand {
             }
         };
 
-        // /permission info
+        this.permissionsProvider = new TypeArgument("<Permission>") {
+
+            @Override
+            public boolean checkArgument(String arg) {
+                return true;
+            }
+
+            @Override
+            public String[] getValidArguments() {
+                return new String[] {"perm.perm"};
+            }
+        };
+
+        // /permission info <Player>
         addInfoCommand();
         // /permission listGroups
         addListGroupsCommand();
@@ -76,48 +94,102 @@ public class PermissionCommand extends CustomCommand {
         addSetSuffixCommand();
         // /permission setChatColor <Group> <Color>
         addSetChatColorCommand();
-        // /permission listPermissions <Group> <Page>
         // /permission addPermission <Group> <Permission>
+        addAddPermissionCommand();
         // /permission removePermission <Group> <Permission>
+        addRemovePermissionCommand();
+        // /permission listPermissions <Group> <Page>
+        addListPermissionCommand();
 
-        // /permission getGroup <Player>
+        // /permission hasPermission <Player> <Permission>
+        addHasPermissionCommand();
         // /permission setGroup <Player> <Group>
         // /permission setTempGroup <Player> <Group> <Time>
+        
 
 
     }
 
+    private void sendInfo(CommandSender sender, UUID target, boolean isOther) {
+        PlayerPermissionData playerPermissionData = this.permissionHandler.getPlayerPermissionData(target);
+        PermissionGroup defaultGroup;
+        PermissionGroup tempGroup = null;
+        Long tempGroupEnd = null;
+
+        if (playerPermissionData == null) {
+            defaultGroup = this.permissionHandler.getGroup(target);
+        } else {
+            defaultGroup = this.permissionHandler.getGroupByGroupName(playerPermissionData.getGroupName());
+
+            if (playerPermissionData.hasTempGroup()) {
+                tempGroup = this.permissionHandler.getGroupByGroupName(playerPermissionData.getTempGroupName());
+                tempGroupEnd = playerPermissionData.getTempGroupEnd();
+            }
+        }
+
+        String playername = target.toString();
+        if(playerPermissionData != null) {
+            playername = playerPermissionData.getName();
+        }
+
+        if (tempGroup == null) {
+            if(isOther) {
+                sender.sendMessage(this.messageConfig.getCommandInfoOtherDefaultGroup(playername, defaultGroup.getName()));
+            } else {
+                sender.sendMessage(this.messageConfig.getCommandInfoDefaultGroup(defaultGroup.getName()));
+            }
+        } else {
+            if(isOther) {
+                sender.sendMessage(this.messageConfig.getCommandInfoOtherDefaultAndTempGroup(playername, defaultGroup.getName(), tempGroup.getName(), tempGroupEnd));
+            } else {
+                sender.sendMessage(this.messageConfig.getCommandInfoDefaultAndTempGroup(defaultGroup.getName(), tempGroup.getName(), tempGroupEnd));
+            }
+        }
+    }
+
     private void addInfoCommand() {
-        this.apply("info", new CommandListener("Shows the Player his current Permission-Group information", argMap -> {
-            if (argMap.getSender() instanceof Player player) {
-                PlayerPermissionData playerPermissionData = this.permissionHandler
-                        .getPlayerPermissionData(player.getUniqueId());
-                PermissionGroup defaultGroup;
-                PermissionGroup tempGroup = null;
-                Long tempGroupEnd = null;
+        CommandListener commandListener = new CommandListener("Shows the current Permission-Group information for a Player", argMap -> {
 
-                if (playerPermissionData == null) {
-                    defaultGroup = this.permissionHandler.getGroup(player.getUniqueId());
+            String playerNameOrUUID = argMap.getArgument("<Player>");
+            if(playerNameOrUUID == null) {
+                if (argMap.getSender() instanceof Player player) {
+                    sendInfo(player, player.getUniqueId(), false);
                 } else {
-                    defaultGroup = this.permissionHandler.getGroupByGroupName(playerPermissionData.getGroupName());
-
-                    if (playerPermissionData.hasTempGroup()) {
-                        tempGroup = this.permissionHandler.getGroupByGroupName(playerPermissionData.getTempGroupName());
-                        tempGroupEnd = playerPermissionData.getTempGroupEnd();
+                    argMap.getSender().sendMessage(this.messageConfig.getCommandNotAPlayer());
+                }
+            } else {
+                CommandSender cs = argMap.getSender();
+                UUID uuid = null;
+                if(playerNameOrUUID.length() <= 16) {
+                    // PlayerName
+                    try {
+                        Player onlinePlayer = Bukkit.getPlayer(playerNameOrUUID);
+                        if(onlinePlayer != null) {
+                            uuid = onlinePlayer.getUniqueId();
+                        } else {
+                            playerNotFound(cs, playerNameOrUUID);
+                        }
+                    } catch (Exception exception) {
+                        playerNotFound(cs, playerNameOrUUID);
+                    }
+                } else {
+                    // UUID
+                    try {
+                        uuid = UUID.fromString(playerNameOrUUID);
+                        
+                    } catch (Exception exception) {
+                        playerNotFound(cs, playerNameOrUUID);
                     }
                 }
 
-                if (tempGroup == null) {
-                    player.sendMessage(this.messageConfig.getCommandInfoDefaultGroup(defaultGroup.getName()));
-                } else {
-                    player.sendMessage(this.messageConfig.getCommandInfoDefaultAndTempGroup(defaultGroup.getName(),
-                            tempGroup.getName(), tempGroupEnd));
+                if(uuid != null) {
+                    sendInfo(cs, uuid, true);
                 }
-
-            } else {
-                argMap.getSender().sendMessage(this.messageConfig.getCommandNotAPlayer());
             }
-        }));
+
+           
+        });
+        this.apply("info", new Arg().setListener(commandListener).apply(this.playerNameOrUUIDProvider, commandListener));
     }
 
     private void addListGroupsCommand() {
@@ -136,7 +208,7 @@ public class PermissionCommand extends CustomCommand {
                         String prefix = argMap.getArgument("\"Prefix\"");
 
                         if(this.permissionHandler.getGroupByGroupName(groupname) == null) {
-                            PermissionGroup group = this.permissionHandler.createNewGroup(groupname, prefix, new ArrayList<>());
+                            PermissionGroup group = this.permissionHandler.createNewGroup(groupname, prefix.substring(1,prefix.length()-1), new ArrayList<>());
                             cs.sendMessage(this.messageConfig.getCommandGroupCreated(group.getName()));
                         } else {
                             cs.sendMessage(this.messageConfig.getCommandGroupAlreadyExists(groupname));
@@ -175,7 +247,7 @@ public class PermissionCommand extends CustomCommand {
             PermissionGroup group = this.permissionHandler.getGroupByGroupName(groupname);
 
             if (group != null) {
-                group.setPrefix(prefix);
+                group.setPrefix(prefix.substring(1,prefix.length()-1));
                 Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
 
                     @Override
@@ -199,7 +271,7 @@ public class PermissionCommand extends CustomCommand {
             PermissionGroup group = this.permissionHandler.getGroupByGroupName(groupname);
 
             if (group != null) {
-                group.setSuffix(suffix);
+                group.setSuffix(suffix.substring(1,suffix.length()-1));
                 Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
 
                     @Override
@@ -250,6 +322,139 @@ public class PermissionCommand extends CustomCommand {
                 cs.sendMessage(this.messageConfig.getCommandGroupNotExisting(groupname));
             }
         }))));
+    }
+
+    private void addAddPermissionCommand() {
+        this.apply("addPermission", new Arg().apply(groupNameProvider, new Arg().apply(this.permissionsProvider, new CommandListener("Adds a Permission to a Group", argMap -> {
+            CommandSender cs = argMap.getSender();
+            String groupname = argMap.getArgument("<Group>");
+            String permission = argMap.getArgument("<Permission>");
+            PermissionGroup group = this.permissionHandler.getGroupByGroupName(groupname);
+
+            if (group != null) {
+                group.addPermission(permission);
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
+
+                    @Override
+                    public void run() {
+                        group.saveGroupToFile(new File(plugin.getDataFolder(), "groups/"+group.getName().toLowerCase(Locale.ENGLISH)+".yml"));
+                    }
+                    
+                });
+                cs.sendMessage(this.messageConfig.getCommandGroupUpdated(group.getName()));
+            } else {
+                cs.sendMessage(this.messageConfig.getCommandGroupNotExisting(groupname));
+            }
+        }))));
+    }
+
+    private void addRemovePermissionCommand() {
+        this.apply("removePermission", new Arg().apply(groupNameProvider, new Arg().apply(this.permissionsProvider, new CommandListener("Removes a Permission from a Group", argMap -> {
+            CommandSender cs = argMap.getSender();
+            String groupname = argMap.getArgument("<Group>");
+            String permission = argMap.getArgument("<Permission>");
+            PermissionGroup group = this.permissionHandler.getGroupByGroupName(groupname);
+
+            if (group != null) {
+                group.removePermission(permission);
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
+
+                    @Override
+                    public void run() {
+                        group.saveGroupToFile(new File(plugin.getDataFolder(), "groups/"+group.getName().toLowerCase(Locale.ENGLISH)+".yml"));
+                    }
+                    
+                });
+                cs.sendMessage(this.messageConfig.getCommandGroupUpdated(group.getName()));
+            } else {
+                cs.sendMessage(this.messageConfig.getCommandGroupNotExisting(groupname));
+            }
+        }))));
+    }
+
+    private void addListPermissionCommand() {
+        IntArgument pageArgument = new IntArgument("<Page>");
+        CommandListener cmdListener = new CommandListener("Shows all the Permissions of a Group", argMap -> {
+            CommandSender cs = argMap.getSender();
+            String groupname = argMap.getArgument("<Group>");
+            int page = argMap.getArgumentAsInt("<Page>").orElseGet(()->1);
+
+            PermissionGroup group = this.permissionHandler.getGroupByGroupName(groupname);
+
+            if (group != null) {
+                ArrayList<String> permissions = group.getPermissions();
+                int startIndex = (page-1)*10;
+                int endIndex = Math.min((page)*10, permissions.size());
+                int maxPage = permissions.size()/10+1;
+
+                if(startIndex > endIndex) {
+                    cs.sendMessage(this.messageConfig.getCommandListPermissionPageNotExist());
+                } else {
+                    List<String> subPerms = permissions.subList(startIndex, endIndex);
+                    cs.sendMessage(this.messageConfig.getCommandListPermissionHeader(group.getName(), permissions.size(), page, maxPage));
+                    int c = startIndex+1;
+                    for(String s : subPerms) {
+                        cs.sendMessage(this.messageConfig.getCommandListPermissionInfo(c, s));
+                        c++;
+                    }
+                }
+
+            } else {
+                cs.sendMessage(this.messageConfig.getCommandGroupNotExisting(groupname));
+            }
+
+        });
+
+        this.apply("listPermissions", new Arg().apply(groupNameProvider, new Arg().setListener(cmdListener).apply(pageArgument, cmdListener)));
+    }
+
+    private void addHasPermissionCommand() {
+        this.apply("hasPermission", new Arg().apply(this.playerNameOrUUIDProvider, new Arg().apply(this.permissionsProvider, 
+            new CommandListener("Checks if the Player has the specific Permission", argMap -> {
+                CommandSender cs = argMap.getSender();
+                String player = argMap.getArgument("<Player>");
+                String permission = argMap.getArgument("<Permission>");
+                
+
+                if(player.length() <= 16) {
+                    // PlayerName
+                    try {
+                        Player onlinePlayer = Bukkit.getPlayer(player);
+                        if(onlinePlayer != null) {
+                            boolean hasPerm = onlinePlayer.hasPermission(permission);
+                            if(hasPerm) {
+                                cs.sendMessage(this.messageConfig.getCommandHasPerm());
+                            } else {
+                                cs.sendMessage(this.messageConfig.getCommandHasNotPerm());
+                            }
+                        } else {
+                            playerNotFound(cs, player);
+                        }
+                    } catch (Exception exception) {
+                        playerNotFound(cs, player);
+                    }
+                } else {
+                    // UUID
+                    try {
+                        UUID uuid = UUID.fromString(player);
+                        Set<String> effectivePerms = this.permissionHandler.getEffectivePermissions(uuid);
+                        
+                        if(effectivePerms.contains(permission)) {
+                            cs.sendMessage(this.messageConfig.getCommandHasPerm());
+                        } else {
+                            cs.sendMessage(this.messageConfig.getCommandHasNotPerm());
+                        }
+
+                    } catch (Exception exception) {
+                        playerNotFound(cs, player);
+                    }
+                }
+
+            }))));
+    }
+
+    private void playerNotFound(CommandSender sender, String playerNameUUID) {
+        sender.sendMessage(this.messageConfig.getCommandPlayerNotFoundByNameOrUUID(playerNameUUID));
     }
 
 }

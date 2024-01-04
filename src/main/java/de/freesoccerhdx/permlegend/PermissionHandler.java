@@ -61,8 +61,10 @@ public class PermissionHandler {
         ArrayList<PermissionAttachment> toRemove = new ArrayList<>();
         effectivePerms.forEach(atachInfo -> {
             PermissionAttachment attachment = atachInfo.getAttachment();
-            if(attachment.getPlugin().equals(this.plugin)) {
-                toRemove.add(attachment);
+            if(attachment != null) {
+                if(attachment.getPlugin().equals(this.plugin)) {
+                    toRemove.add(attachment);
+                }
             }
         });
 
@@ -74,7 +76,11 @@ public class PermissionHandler {
         Set<String> newPermissions = getEffectivePermissions(player.getUniqueId());
 
         newPermissions.forEach(permission-> {
-            player.addAttachment(this.plugin, permission, !permission.startsWith("-"));
+            if(permission.startsWith("-")) {
+                player.addAttachment(this.plugin, permission.substring(1), false);
+            } else {
+                player.addAttachment(this.plugin, permission, true);
+            }
         });
 
     }
@@ -231,7 +237,7 @@ public class PermissionHandler {
     }
 
     public PlayerPermissionData getPlayerPermissionData(UUID uniqueId) {
-        return this.getPlayerPermissionData(uniqueId);
+        return this.playerPermissionDatas.get(uniqueId);
     }
 
     public Set<String> getGroupNames() {

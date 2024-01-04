@@ -16,9 +16,9 @@ public class PermissionGroup {
     private String prefix;
     
 
-    private String siblingGroupName = null;
-    private String chatMessageColor = null;
-    private String suffix = null;
+    private String siblingGroupName = "";
+    private String chatMessageColor = "";
+    private String suffix = "";
 
 
     public PermissionGroup(@Nonnull String name, @Nonnull String prefix, @Nonnull ArrayList<String> permissions) {
@@ -89,7 +89,12 @@ public class PermissionGroup {
     }
     
     public void addPermission(@Nonnull String permission) {
+        if(this.permissions.contains(permission)) return;
         this.permissions.add(permission);
+    }
+
+    public boolean removePermission(String permission) {
+        return this.permissions.remove(permission);
     }
 
     public ArrayList<String> getEffectivePermissions(PermissionHandler permissionHandler) {
@@ -110,6 +115,8 @@ public class PermissionGroup {
     public void setPrefix(String prefix) {
         this.prefix = prefix;
     }
+
+
 
    
 }

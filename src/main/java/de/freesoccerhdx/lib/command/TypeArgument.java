@@ -69,7 +69,7 @@ public abstract class TypeArgument extends ArgumentTile {
 
         @Override
         public String[] getValidArguments() {
-            return new String[]{"0"};
+            return new String[]{"1"};
         }
 
     }
