@@ -1,5 +1,6 @@
 package de.freesoccerhdx.permlegend;
 
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.YamlConfiguration;
 
 import javax.annotation.Nonnull;
@@ -11,9 +12,9 @@ import java.util.Collection;
 public class PermissionGroup {
 
     private final ArrayList<String> permissions;
-    private final String prefix;
     private final String name;
-
+    private String prefix;
+    
 
     private String siblingGroupName = null;
     private String chatMessageColor = null;
@@ -105,4 +106,10 @@ public class PermissionGroup {
 
         return perms;
     }
+
+    public void setPrefix(String prefix) {
+        this.prefix = prefix;
+    }
+
+   
 }

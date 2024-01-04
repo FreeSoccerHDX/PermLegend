@@ -17,6 +17,7 @@ public class MessageConfig {
     private String commandGroupAlreadyExists = "&cThe Group &6{group} &calready exists.";
     private String commandGroupNotExisting = "&cThe Group &6{group} &cdoes not exist.";
     private String commandGroupCreated = "&aThe Group &6{group} &awas successfully created.";
+    private String groupUpdated = "&aYou updated the Permissions-Group &b'{group}'";
 
     private String commandGroupInfo = "&aGroup Information: "
         + "\n&eName: &f'{group}&f'"
@@ -85,7 +86,6 @@ public class MessageConfig {
         return Methods.replaceColorCodes(commandGroupNotExisting.replace("{group}", group));
     }
 
-
     public String getCommandGroupInfo(String group, String prefix, String suffix, String chatColor, String sibling, int permSize) {
         return Methods.replaceColorCodes(commandGroupInfo
             .replace("{group}", group)
@@ -95,5 +95,9 @@ public class MessageConfig {
             .replace("{sibling}", sibling)
             .replace("{permissionsize}", ""+permSize)
             );
+    }
+
+    public String getCommandGroupUpdated(String group) {
+        return Methods.replaceColorCodes(groupUpdated.replace("{group}", group));
     }
 }
