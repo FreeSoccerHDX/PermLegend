@@ -13,6 +13,20 @@ public class MessageConfig {
     private String commandInfoDefaultGroup = "&aYour Permission-Group is &b'{group}'";
     private String commandInfoDefaultAndTempGroup = "&aYour Permission-Group is currently &b'{tempgroup}'.\n&7You will lose this Group get the Group &b'{group}' &7in {time}.";
 
+    private String commandListGroups = "&aThere are currently following Groups:\n&7{groupnames}";
+    private String commandGroupAlreadyExists = "&cThe Group &6{group} &calready exists.";
+    private String commandGroupNotExisting = "&cThe Group &6{group} &cdoes not exist.";
+    private String commandGroupCreated = "&aThe Group &6{group} &awas successfully created.";
+
+    private String commandGroupInfo = "&aGroup Information: "
+        + "\n&eName: &f'{group}&f'"
+        + "\n&ePrefix: &f'{prefix}&f'"
+        + "\n&eSuffix: &f'{suffix}&f'"
+        + "\n&eChatColor: &f'{chatcolor}ChAtCoLoR&f'"
+        + "\n&eSibling: &f'{sibling}&f'"
+        + "\n&ePermissions: &f'{permissionsize}&f'"
+        ;
+
     private final Plugin plugin;
 
     public MessageConfig(Plugin plugin) {
@@ -53,5 +67,33 @@ public class MessageConfig {
                 .replace("{group}", defaultGroup)
                 .replace("{tempgroup}", tempGroup)
                 .replace("{time}", Methods.secondsToCountdown(tempGroupEnd/1000)));
+    }
+
+    public String getCommandListGroups(String groups) {
+        return Methods.replaceColorCodes(commandListGroups.replace("{groupnames}", groups));
+    }
+
+    public String getCommandGroupAlreadyExists(String group) {
+        return Methods.replaceColorCodes(commandGroupAlreadyExists.replace("{group}", group));
+    }
+
+    public String getCommandGroupCreated(String group) {
+        return Methods.replaceColorCodes(commandGroupCreated.replace("{group}", group));
+    }
+
+    public String getCommandGroupNotExisting(String group) {
+        return Methods.replaceColorCodes(commandGroupNotExisting.replace("{group}", group));
+    }
+
+
+    public String getCommandGroupInfo(String group, String prefix, String suffix, String chatColor, String sibling, int permSize) {
+        return Methods.replaceColorCodes(commandGroupInfo
+            .replace("{group}", group)
+            .replace("{prefix}", prefix)
+            .replace("{suffix}", suffix)
+            .replace("{chatcolor}", chatColor)
+            .replace("{sibling}", sibling)
+            .replace("{permissionsize}", ""+permSize)
+            );
     }
 }

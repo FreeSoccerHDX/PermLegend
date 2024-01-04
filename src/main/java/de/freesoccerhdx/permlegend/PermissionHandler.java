@@ -11,8 +11,11 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+
+import javax.annotation.Nonnull;
 
 public class PermissionHandler {
 
@@ -229,6 +232,25 @@ public class PermissionHandler {
 
     public PlayerPermissionData getPlayerPermissionData(UUID uniqueId) {
         return this.getPlayerPermissionData(uniqueId);
+    }
+
+    public Set<String> getGroupNames() {
+        return this.permissionGroups.keySet();
+    }
+
+    public PermissionGroup createNewGroup(@Nonnull String groupname, @Nonnull String prefix, @Nonnull ArrayList<String> initialPermissions) {
+        PermissionGroup group = new PermissionGroup(groupname, prefix, initialPermissions);
+        this.permissionGroups.put(groupname, group);
+        
+        Bukkit.getScheduler().runTaskAsynchronously(this.plugin, new Runnable() {
+
+            @Override
+            public void run() {
+                group.saveGroupToFile(new File(plugin.getDataFolder(), "groups/"+groupname.toLowerCase(Locale.ENGLISH)+".yml"));
+            }
+            
+        });
+        return group;
     }
 
 }
