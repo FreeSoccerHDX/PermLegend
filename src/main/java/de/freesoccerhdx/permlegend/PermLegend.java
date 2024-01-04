@@ -10,9 +10,9 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 public final class PermLegend extends JavaPlugin implements Listener {
 
-
     private PermissionHandler permissionHandler;
     private MessageConfig messageConfig;
+
     @Override
     public void onEnable() {
 
@@ -29,10 +29,10 @@ public final class PermLegend extends JavaPlugin implements Listener {
 
     }
 
-
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
+        this.permissionHandler.updatePlayerPermission(player);
         PermissionGroup permissionGroup = this.permissionHandler.getGroup(player.getUniqueId());
         String prefix = permissionGroup.getPrefix();
         String suffix = permissionGroup.getSuffix();

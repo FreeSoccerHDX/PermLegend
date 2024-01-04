@@ -6,6 +6,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collection;
 
 public class PermissionGroup {
 
@@ -44,15 +45,15 @@ public class PermissionGroup {
         return false;
     }
 
-    public void setSiblingGroupName(@Nonnull String siblingGroupName) {
+    public void setSiblingGroupName(@Nullable String siblingGroupName) {
         this.siblingGroupName = siblingGroupName;
     }
 
-    public void setChatMessageColor(@Nonnull String chatMessageColor) {
+    public void setChatMessageColor(@Nullable String chatMessageColor) {
         this.chatMessageColor = chatMessageColor;
     }
 
-    public void setSuffix(@Nonnull String suffix) {
+    public void setSuffix(@Nullable String suffix) {
         this.suffix = suffix;
     }
 
@@ -88,5 +89,20 @@ public class PermissionGroup {
     
     public void addPermission(@Nonnull String permission) {
         this.permissions.add(permission);
+    }
+
+    public ArrayList<String> getEffectivePermissions(PermissionHandler permissionHandler) {
+
+        ArrayList<String> perms = new ArrayList<>();
+        perms.addAll(this.permissions);
+
+        if(this.getSiblingGroupName() != null) {
+            PermissionGroup group = permissionHandler.getGroupByGroupName(this.getSiblingGroupName());
+            if(group != null) {
+                perms.addAll(group.getEffectivePermissions(permissionHandler));
+            }
+        }
+
+        return perms;
     }
 }
