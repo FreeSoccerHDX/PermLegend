@@ -2,8 +2,6 @@ package de.freesoccerhdx.permlegend;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
@@ -15,7 +13,6 @@ import org.bukkit.block.Sign;
 import org.bukkit.block.sign.Side;
 import org.bukkit.block.sign.SignSide;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.configuration.serialization.ConfigurationSerializable;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.util.Vector;
 
@@ -62,7 +59,7 @@ public class SignDisplays {
                 });
             }
 
-        }, 20 * 5, 20 * 3);
+        }, 20 * 5, 20 * 20);
     }
 
     public void addSign(UUID ownerUUID, Block posBlock) {
