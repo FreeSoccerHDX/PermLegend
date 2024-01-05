@@ -24,8 +24,46 @@ public class PermissionHandler {
 
     private final Plugin plugin;
 
+    private ArrayList<Player> toCheckTemp;
+
     public PermissionHandler(Plugin plugin) {
         this.plugin = plugin;
+        this.toCheckTemp = new ArrayList<>();
+
+        Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
+
+            @Override
+            public void run() {
+                ArrayList<Player> toRemove = new ArrayList<>();
+                for(Player player : toCheckTemp) {
+                    if(player.isValid()) {
+                        PlayerPermissionData playerPermData = getPlayerPermissionData(player.getUniqueId());
+                        if(!playerPermData.hasTempGroup()) {
+                            toRemove.add(player);
+                            updatePlayerPermission(player);
+                        }
+
+                    } else {
+                        toRemove.add(player);
+                    }
+                }
+
+                toRemove.forEach(player->toCheckTemp.remove(player));
+            }
+            
+        }, 20*2, 20);
+
+        Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
+
+            @Override
+            public void run() {
+               for(Player player : Bukkit.getOnlinePlayers()) {
+                    updatePlayerPermission(player);
+               } 
+            }
+            
+        }, 20*1);
+
         Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
             @Override
             public void run() {
@@ -61,8 +99,8 @@ public class PermissionHandler {
         ArrayList<PermissionAttachment> toRemove = new ArrayList<>();
         effectivePerms.forEach(atachInfo -> {
             PermissionAttachment attachment = atachInfo.getAttachment();
-            if(attachment != null) {
-                if(attachment.getPlugin().equals(this.plugin)) {
+            if (attachment != null) {
+                if (attachment.getPlugin().equals(this.plugin)) {
                     toRemove.add(attachment);
                 }
             }
@@ -72,17 +110,22 @@ public class PermissionHandler {
             player.removeAttachment(permAttachment);
         });
 
-
         Set<String> newPermissions = getEffectivePermissions(player.getUniqueId());
 
-        newPermissions.forEach(permission-> {
-            if(permission.startsWith("-")) {
+        newPermissions.forEach(permission -> {
+            if (permission.startsWith("-")) {
                 player.addAttachment(this.plugin, permission.substring(1), false);
             } else {
                 player.addAttachment(this.plugin, permission, true);
             }
         });
 
+        PlayerPermissionData playerPermData = this.getPlayerPermissionData(player.getUniqueId());
+        if(playerPermData != null) {
+            if(playerPermData.hasTempGroup()) {
+                this.toCheckTemp.add(player);
+            }
+        }
     }
 
     public Set<String> getEffectivePermissions(UUID uuid) {
@@ -90,13 +133,12 @@ public class PermissionHandler {
 
         PlayerPermissionData playerData = this.playerPermissionDatas.get(uuid);
 
-        if(playerData != null && playerData.hasAdditionalPermissions()) {
+        if (playerData != null && playerData.hasAdditionalPermissions()) {
             effectivePerms.addAll(playerData.getAdditionalPermissions());
         }
 
         PermissionGroup group = this.getGroup(uuid);
         effectivePerms.addAll(group.getEffectivePermissions(this));
-
 
         return effectivePerms;
     }
@@ -155,7 +197,7 @@ public class PermissionHandler {
     }
 
     public PermissionGroup getGroup(UUID uuid) {
-        if(this.playerPermissionDatas.containsKey(uuid)) {
+        if (this.playerPermissionDatas.containsKey(uuid)) {
             String groupName = this.playerPermissionDatas.get(uuid).getEffectiveGroupName();
             return permissionGroups.get(groupName);
         }
@@ -202,7 +244,7 @@ public class PermissionHandler {
             }
             if (cfg.isSet("SiblingGroupName")) {
                 String siblingGroupName = cfg.getString("SiblingGroupName");
-                if(siblingGroupName.length() >= 1) {
+                if (siblingGroupName.length() >= 1) {
                     group.setSiblingGroupName(siblingGroupName);
                 }
             }
@@ -244,19 +286,60 @@ public class PermissionHandler {
         return this.permissionGroups.keySet();
     }
 
-    public PermissionGroup createNewGroup(@Nonnull String groupname, @Nonnull String prefix, @Nonnull ArrayList<String> initialPermissions) {
+    public PermissionGroup createNewGroup(@Nonnull String groupname, @Nonnull String prefix,
+            @Nonnull ArrayList<String> initialPermissions) {
         PermissionGroup group = new PermissionGroup(groupname, prefix, initialPermissions);
         this.permissionGroups.put(groupname, group);
-        
+
         Bukkit.getScheduler().runTaskAsynchronously(this.plugin, new Runnable() {
 
             @Override
             public void run() {
-                group.saveGroupToFile(new File(plugin.getDataFolder(), "groups/"+groupname.toLowerCase(Locale.ENGLISH)+".yml"));
+                group.saveGroupToFile(
+                        new File(plugin.getDataFolder(), "groups/" + groupname.toLowerCase(Locale.ENGLISH) + ".yml"));
             }
-            
+
         });
         return group;
+    }
+
+    public PlayerPermissionData setGroup(UUID uuid, String group) {
+        PlayerPermissionData playerData = this.getPlayerPermissionData(uuid);
+        Player player = Bukkit.getPlayer(uuid);
+
+        if (playerData == null) {
+            playerData = new PlayerPermissionData(uuid, player == null ? "" : player.getName(), group);
+            this.playerPermissionDatas.put(uuid, playerData);
+        } else {
+            playerData.setGroupName(group);
+        }
+
+        if (player != null) {
+            this.updatePlayerPermission(player);
+        }
+
+        return playerData;
+    }
+
+    public PlayerPermissionData removeTempGroup(UUID uuid) {
+        return this.setTempGroup(uuid, "", 0);
+    }
+
+    public PlayerPermissionData setTempGroup(UUID uuid, String group, long timestampEnd) {
+        PlayerPermissionData playerData = this.getPlayerPermissionData(uuid);
+        Player player = Bukkit.getPlayer(uuid);
+
+        if (playerData == null) {
+            playerData = new PlayerPermissionData(uuid, player == null ? "" : player.getName(), "Default");
+            this.playerPermissionDatas.put(uuid, playerData);
+        }
+        playerData.setTempGroup(group, timestampEnd);
+
+        if (player != null) {
+            this.updatePlayerPermission(player);
+        }
+
+        return playerData;
     }
 
 }

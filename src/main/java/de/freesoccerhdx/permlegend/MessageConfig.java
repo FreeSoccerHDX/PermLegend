@@ -1,7 +1,11 @@
 package de.freesoccerhdx.permlegend;
 
 import de.freesoccerhdx.lib.Methods;
+
+import java.io.File;
+
 import org.bukkit.Bukkit;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 
 public class MessageConfig {
@@ -35,6 +39,8 @@ public class MessageConfig {
 
     private String commandHasPerm = "&aThe Player has this Permission.";
     private String commandHasNotPerm = "&cThe Player doesn't have this Permission.";
+    private String commandSetGroupChanged = "&aThe Group of the Player has changed.";
+    private String commandSetTempGroupFailed = "&cSomething went wrong! Did you use the correct input ?";
 
     private final Plugin plugin;
 
@@ -51,6 +57,67 @@ public class MessageConfig {
 
     private void loadConfig() {
         // TODO load Messages from Config / or create if not existing
+        File cfgFile = new File(this.plugin.getDataFolder(), "messages.yml");
+
+        if(cfgFile.exists()) {
+            YamlConfiguration cfg = new YamlConfiguration();
+            try {
+                cfg.load(cfgFile);
+                joinmessage = cfg.getString("join-msg");
+                chatmessage = cfg.getString("chat-msg");
+                commandNotAPlayer = cfg.getString("cmd.not-a-player");
+                commandInfoDefaultGroup = cfg.getString("cmd.info-default");
+                commandInfoOtherDefaultGroup = cfg.getString("cmd.info-other-default");
+                commandInfoDefaultAndTempGroup = cfg.getString("cmd.info-default-and-temp");
+                commandInfoOtherDefaultAndTempGroup = cfg.getString("cmd.info-other-default-and-temp");
+                commandListGroups = cfg.getString("cmd.list-groups");
+                commandGroupAlreadyExists = cfg.getString("cmd.group-already-exist");
+                commandGroupNotExisting = cfg.getString("cmd-group-not-existing");
+                commandGroupCreated = cfg.getString("cmd.group-created");
+                groupUpdated = cfg.getString("cmd.group-updated");
+                commandGroupInfo = cfg.getString("cmd.group-info");
+                listPageNotExisting = cfg.getString("cmd.list-page-not-exist");
+                listPermHeader = cfg.getString("cmd.list-header");
+                listPermInfo = cfg.getString("cmd.list-entry-info");
+                commandHasPerm = cfg.getString("cmd.has-perm");
+                commandHasNotPerm = cfg.getString("cmd.has-not-perm");
+                commandSetGroupChanged = cfg.getString("cmd.set-group-changed");
+                commandSetTempGroupFailed = cfg.getString("cmd.set-temp-group");
+
+            } catch(Exception exception) {
+                exception.printStackTrace();
+            }
+        } else {
+            YamlConfiguration cfg = new YamlConfiguration();
+            
+            cfg.set("join-msg", joinmessage);
+            cfg.set("chat-msg", chatmessage);
+            cfg.set("cmd.not-a-player", commandNotAPlayer);
+            cfg.set("cmd.info-default", commandInfoDefaultGroup);
+            cfg.set("cmd.info-other-default", commandInfoOtherDefaultGroup);
+            cfg.set("cmd.info-default-and-temp", commandInfoDefaultAndTempGroup);
+            cfg.set("cmd.info-other-default-and-temp", commandInfoOtherDefaultAndTempGroup);
+            cfg.set("cmd.list-groups", commandListGroups);
+            cfg.set("cmd.group-already-exist", commandGroupAlreadyExists);
+            cfg.set("cmd-group-not-existing", commandGroupNotExisting);
+            cfg.set("cmd.group-created", commandGroupCreated);
+            cfg.set("cmd.group-updated", groupUpdated);
+            cfg.set("cmd.group-info", commandGroupInfo);
+            cfg.set("cmd.list-page-not-exist", listPageNotExisting);
+            cfg.set("cmd.list-header", listPermHeader);
+            cfg.set("cmd.list-entry-info", listPermInfo);
+            cfg.set("cmd.has-perm", commandHasPerm);
+            cfg.set("cmd.has-not-perm", commandHasNotPerm);
+            cfg.set("cmd.set-group-changed", commandSetGroupChanged);
+            cfg.set("cmd.set-temp-group", commandSetTempGroupFailed);
+
+            try {
+                cfg.save(cfgFile);
+            } catch(Exception exception) {
+                exception.printStackTrace();
+            }
+
+        }
     }
 
     public String getJoinMessage(String prefix, String name, String suffix) {
@@ -149,6 +216,14 @@ public class MessageConfig {
 
     public String getCommandHasNotPerm() {
         return Methods.replaceColorCodes(commandHasNotPerm);
+    }
+
+    public String getCommandSetGroupChanged() {
+        return Methods.replaceColorCodes(commandSetGroupChanged);
+    }
+
+    public String getCommandSetTempGroupFailed() {
+        return Methods.replaceColorCodes(commandSetTempGroupFailed);
     }
 
 
