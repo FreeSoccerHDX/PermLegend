@@ -19,7 +19,9 @@ public final class PermLegend extends JavaPlugin implements Listener {
         this.permissionHandler = new PermissionHandler(this);
         this.messageConfig = new MessageConfig(this);
 
-        PermissionCommand permissionCommand = new PermissionCommand(this, permissionHandler, messageConfig);
+        SignDisplays signDisplays = new SignDisplays(this, messageConfig, permissionHandler);
+
+        PermissionCommand permissionCommand = new PermissionCommand(this, permissionHandler, messageConfig, signDisplays);
 
         Bukkit.getPluginManager().registerEvents(this, this);
     }

@@ -16,6 +16,8 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Tag;
+import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
@@ -24,18 +26,21 @@ public class PermissionCommand extends CustomCommand {
 
     private final PermissionHandler permissionHandler;
     private final MessageConfig messageConfig;
+    private final SignDisplays signDisplays;
 
     private final TypeArgument playerNameOrUUIDProvider;
     private final TypeArgument groupNameProvider;
     private final TypeArgument permissionsProvider;
 
     private final Plugin plugin;
+    
 
-    public PermissionCommand(Plugin plugin, PermissionHandler permissionHandler, MessageConfig messageConfig) {
+    public PermissionCommand(Plugin plugin, PermissionHandler permissionHandler, MessageConfig messageConfig, SignDisplays signDisplays) {
         super("permission");
         this.plugin = plugin;
         this.permissionHandler = permissionHandler;
         this.messageConfig = messageConfig;
+        this.signDisplays = signDisplays;
 
         this.playerNameOrUUIDProvider = new TypeArgument("<Player>") {
 
@@ -109,70 +114,112 @@ public class PermissionCommand extends CustomCommand {
         // /permission setTempGroup <Player> <Group> <Time>
         addSetTempGroupCommand();
 
+        // /permission setSignDisplay <Player>
+        addSetSignDisplayCommand();
+    }
+
+    private void addSetSignDisplayCommand() {
+        apply("setSignDisplay", new Arg().apply(playerNameOrUUIDProvider, new CommandListener(
+                "Sets the Sign your looking at to a SignDisplay that shows the Playername and his Rank", argMap -> {
+                    if (argMap.getSender() instanceof Player player) {
+                        String playerNameOrUUID = argMap.getArgument("<Player>");
+                        UUID uuid = getUUIDFromInput(player, playerNameOrUUID);
+                        if(uuid == null) return;
+
+                        PlayerPermissionData playerPermissionData = this.permissionHandler.getPlayerPermissionData(uuid);
+
+                        if(playerPermissionData != null) {
+                            Block block = player.getTargetBlockExact(8);
+                            if(block != null) {
+                                if(Tag.ALL_SIGNS.isTagged(block.getType())) {
+                                    this.signDisplays.addSign(playerPermissionData.getUuid(), block);
+                                    player.sendMessage("erfolg");
+                                } else {
+                                    player.sendMessage("kein sign");
+                                }
+                            } else {
+                                player.sendMessage("kein erfolg -> block nicht gefunden");
+                            }
+                        } else {
+                            playerNotFound(player, playerNameOrUUID);
+                        }
+
+
+                    } else {
+                        argMap.getSender().sendMessage(this.messageConfig.getCommandNotAPlayer());
+                    }
+                })));
+    }
+
+    private UUID getUUIDFromInput(CommandSender cs, String input) {
+        UUID uuid = null;
+        if (input.length() <= 16) {
+            // PlayerName
+            try {
+                Player onlinePlayer = Bukkit.getPlayer(input);
+                if (onlinePlayer != null) {
+                    uuid = onlinePlayer.getUniqueId();
+                } else {
+                    playerNotFound(cs, input);
+                }
+            } catch (Exception exception) {
+                playerNotFound(cs, input);
+            }
+        } else {
+            // UUID
+            try {
+                uuid = UUID.fromString(input);
+            } catch (Exception exception) {
+                exception.printStackTrace();
+                playerNotFound(cs, input);
+            }
+        }
+        return uuid;
     }
 
     private void addSetTempGroupCommand() {
         MultiArgument timeInputArg = new MultiArgument("<Time>", "", "");
 
-        apply("setTempGroup", new Arg().apply(playerNameOrUUIDProvider, new Arg().apply(groupNameProvider, new Arg().apply(timeInputArg, 
-                new CommandListener("Sets a Group temporary to the Player", argMap -> {
-                    CommandSender cs = argMap.getSender();
-                    String group = argMap.getArgument("<Group>");
-                    String playerNameOrUUID = argMap.getArgument("<Player>");
-                    String timeInput = argMap.getArgument("<Time>");
+        apply("setTempGroup",
+                new Arg().apply(playerNameOrUUIDProvider,
+                        new Arg().apply(groupNameProvider, new Arg().apply(timeInputArg,
+                                new CommandListener("Sets a Group temporary to the Player", argMap -> {
+                                    CommandSender cs = argMap.getSender();
+                                    String group = argMap.getArgument("<Group>");
+                                    String playerNameOrUUID = argMap.getArgument("<Player>");
+                                    String timeInput = argMap.getArgument("<Time>");
 
-                    UUID uuid = null;
-                    if (playerNameOrUUID.length() <= 16) {
-                        // PlayerName
-                        try {
-                            Player onlinePlayer = Bukkit.getPlayer(playerNameOrUUID);
-                            if (onlinePlayer != null) {
-                                uuid = onlinePlayer.getUniqueId();
-                            } else {
-                                playerNotFound(cs, playerNameOrUUID);
-                            }
-                        } catch (Exception exception) {
-                            playerNotFound(cs, playerNameOrUUID);
-                        }
-                    } else {
-                        // UUID
-                        try {
-                            uuid = UUID.fromString(playerNameOrUUID);
-                        } catch (Exception exception) {
-                            exception.printStackTrace();
-                            playerNotFound(cs, playerNameOrUUID);
-                        }
-                    }
+                                    UUID uuid = getUUIDFromInput(cs, playerNameOrUUID);
 
-                    if (uuid != null) {
-                        if (this.permissionHandler.getGroupByGroupName(group) != null) {
-                            try {
-                                long seconds = Methods.calculateTimeFromInput(timeInput);
-                                long end = System.currentTimeMillis() + seconds*1000;
-                                PlayerPermissionData permPlayerData = this.permissionHandler.setTempGroup(uuid, group, end);
+                                    if (uuid != null) {
+                                        if (this.permissionHandler.getGroupByGroupName(group) != null) {
+                                            try {
+                                                long seconds = Methods.calculateTimeFromInput(timeInput);
+                                                long end = System.currentTimeMillis() + seconds * 1000;
+                                                PlayerPermissionData permPlayerData = this.permissionHandler
+                                                        .setTempGroup(uuid, group, end);
 
-                                Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        permPlayerData.saveToPlayerFile(new File(plugin.getDataFolder(),
-                                                "players/" + permPlayerData.getUuid() + ".yml"));
+                                                Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
+                                                    @Override
+                                                    public void run() {
+                                                        permPlayerData.saveToPlayerFile(new File(plugin.getDataFolder(),
+                                                                "players/" + permPlayerData.getUuid() + ".yml"));
+                                                    }
+                                                });
+
+                                                cs.sendMessage(this.messageConfig.getCommandSetGroupChanged());
+
+                                            } catch (Exception exception) {
+                                                cs.sendMessage(this.messageConfig.getCommandSetTempGroupFailed());
+                                            }
+
+                                        } else {
+                                            cs.sendMessage(this.messageConfig.getCommandGroupNotExisting(group));
+                                        }
                                     }
-                                });
 
-                                cs.sendMessage(this.messageConfig.getCommandSetGroupChanged());
-
-                            } catch(Exception exception) {
-                                cs.sendMessage(this.messageConfig.getCommandSetTempGroupFailed());
-                            }
-
-                        } else {
-                            cs.sendMessage(this.messageConfig.getCommandGroupNotExisting(group));
-                        }
-                    }
-
-                })))));
+                                })))));
     }
-
 
     private void addSetGroupCommand() {
         apply("setGroup", new Arg().apply(playerNameOrUUIDProvider, new Arg().apply(groupNameProvider,
