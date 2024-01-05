@@ -139,6 +139,7 @@ public class PermissionCommand extends CustomCommand {
                         try {
                             uuid = UUID.fromString(playerNameOrUUID);
                         } catch (Exception exception) {
+                            exception.printStackTrace();
                             playerNotFound(cs, playerNameOrUUID);
                         }
                     }

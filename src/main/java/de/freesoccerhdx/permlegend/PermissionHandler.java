@@ -98,6 +98,7 @@ public class PermissionHandler {
         Set<PermissionAttachmentInfo> effectivePerms = player.getEffectivePermissions();
         ArrayList<PermissionAttachment> toRemove = new ArrayList<>();
         effectivePerms.forEach(atachInfo -> {
+            
             PermissionAttachment attachment = atachInfo.getAttachment();
             if (attachment != null) {
                 if (attachment.getPlugin().equals(this.plugin)) {
@@ -107,7 +108,7 @@ public class PermissionHandler {
         });
 
         toRemove.forEach(permAttachment -> {
-            player.removeAttachment(permAttachment);
+            permAttachment.remove();
         });
 
         Set<String> newPermissions = getEffectivePermissions(player.getUniqueId());
@@ -115,6 +116,11 @@ public class PermissionHandler {
         if(newPermissions.contains("*")) {
             Bukkit.getPluginManager().getPermissions().forEach(perm -> {
                 player.addAttachment(plugin, perm.getName(), true);
+            });
+        }
+        if(newPermissions.contains("-*")) {
+            Bukkit.getPluginManager().getPermissions().forEach(perm -> {
+                player.addAttachment(plugin, perm.getName(), false);
             });
         }
 
@@ -125,7 +131,7 @@ public class PermissionHandler {
                 player.addAttachment(this.plugin, permission, true);
             }
         });
-        
+        player.updateCommands();
 
         PlayerPermissionData playerPermData = this.getPlayerPermissionData(player.getUniqueId());
         if(playerPermData != null) {
