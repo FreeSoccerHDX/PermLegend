@@ -17,7 +17,7 @@ public class MessageConfig {
     private String commandInfoDefaultGroup = "&aYour Permission-Group is &b'{group}'";
     private String commandInfoOtherDefaultGroup = "&aThe Permission-Group of {playername} is &b'{group}'";
     private String commandInfoDefaultAndTempGroup = "&aYour Permission-Group is currently &b'{tempgroup}'.\n&7You will lose this Group and get the Group &b'{group}' &7in {time}.";
-    private String commandInfoOtherDefaultAndTempGroup = "&aThe Permission-Group of {playername }is currently &b'{tempgroup}'.\n&7You will lose this Group and get the Group &b'{group}' &7in {time}.";
+    private String commandInfoOtherDefaultAndTempGroup = "&aThe Permission-Group of {playername} is currently &b'{tempgroup}'.\n&7He will lose this Group and get the Group &b'{group}' &7in {time}.";
 
     private String commandListGroups = "&aThere are currently following Groups:\n&7{groupnames}";
     private String commandGroupAlreadyExists = "&cThe Group &6{group} &calready exists.";
@@ -154,7 +154,7 @@ public class MessageConfig {
                 .replace("{playername}", playername)
                 .replace("{group}", defaultGroup)
                 .replace("{tempgroup}", tempGroup)
-                .replace("{time}", Methods.secondsToCountdown(tempGroupEnd / 1000)));
+                .replace("{time}", Methods.secondsToCountdown(tempGroupEnd / 1000 - (System.currentTimeMillis()/1000))));
     }
 
     public String getCommandListGroups(String groups) {

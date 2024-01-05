@@ -63,7 +63,7 @@ public class PermissionCommand extends CustomCommand {
 
             @Override
             public String[] getValidArguments() {
-                return new String[] { "Default" };
+                return permissionHandler.getGroupNames().toArray(new String[0]);
             }
         };
 

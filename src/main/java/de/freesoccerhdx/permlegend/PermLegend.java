@@ -51,6 +51,7 @@ public final class PermLegend extends JavaPlugin implements Listener {
         event.setCancelled(true);
         String msg = this.messageConfig.getChatMessage(prefix, player.getName(), suffix, chatColor, event.getMessage());
         event.getRecipients().forEach(player1 -> player1.sendMessage(msg));
+        Bukkit.getConsoleSender().sendMessage(msg);
     }
 
 }
