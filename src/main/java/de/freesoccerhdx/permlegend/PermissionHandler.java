@@ -112,6 +112,12 @@ public class PermissionHandler {
 
         Set<String> newPermissions = getEffectivePermissions(player.getUniqueId());
 
+        if(newPermissions.contains("*")) {
+            Bukkit.getPluginManager().getPermissions().forEach(perm -> {
+                player.addAttachment(plugin, perm.getName(), true);
+            });
+        }
+
         newPermissions.forEach(permission -> {
             if (permission.startsWith("-")) {
                 player.addAttachment(this.plugin, permission.substring(1), false);
@@ -119,6 +125,7 @@ public class PermissionHandler {
                 player.addAttachment(this.plugin, permission, true);
             }
         });
+        
 
         PlayerPermissionData playerPermData = this.getPlayerPermissionData(player.getUniqueId());
         if(playerPermData != null) {
