@@ -8,12 +8,16 @@ import org.bukkit.permissions.PermissionAttachmentInfo;
 import org.bukkit.plugin.Plugin;
 
 import java.io.File;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
+import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import javax.annotation.Nonnull;
 
@@ -21,10 +25,13 @@ public class PermissionHandler {
 
     private HashMap<String, PermissionGroup> permissionGroups = new HashMap<>();
     private HashMap<UUID, PlayerPermissionData> playerPermissionDatas = new HashMap<>();
+    private HashMap<UUID, List<Consumer<PlayerPermissionData>>> groupChangeHook = new HashMap<>();
 
     private final Plugin plugin;
 
     private ArrayList<Player> toCheckTemp;
+
+    private Queue<Runnable> tasks = new ArrayDeque<>();
 
     public PermissionHandler(Plugin plugin) {
         this.plugin = plugin;
@@ -34,35 +41,63 @@ public class PermissionHandler {
 
             @Override
             public void run() {
-                ArrayList<Player> toRemove = new ArrayList<>();
-                for(Player player : toCheckTemp) {
-                    if(player.isValid()) {
-                        PlayerPermissionData playerPermData = getPlayerPermissionData(player.getUniqueId());
-                        if(!playerPermData.hasTempGroup()) {
-                            toRemove.add(player);
-                            updatePlayerPermission(player);
-                        }
 
+                long currentTime = System.nanoTime();
+                long endTime = currentTime + 1000000; // max 1ms
+
+                while (System.nanoTime() <= endTime) {
+                    if (tasks.size() > 0) {
+                        tasks.poll().run();
                     } else {
-                        toRemove.add(player);
+                        for (Player player : toCheckTemp) {
+                            tasks.add(() -> {
+                                 if (player.isValid()) {
+                                    PlayerPermissionData playerPermData = getPlayerPermissionData(player.getUniqueId());
+                                    if (!playerPermData.hasTempGroup()) {
+                                        toCheckTemp.remove(player);
+                                        updatePlayerPermission(player);
+                                        checkHook(player.getUniqueId(), playerPermData);
+                                    }
+
+                                } else {
+                                    toCheckTemp.remove(player);
+                                }
+                            });
+                        }
+                        break;
                     }
                 }
 
-                toRemove.forEach(player->toCheckTemp.remove(player));
+                // ArrayList<Player> toRemove = new ArrayList<>();
+                // for (Player player : toCheckTemp) {
+                //     if (player.isValid()) {
+                //         PlayerPermissionData playerPermData = getPlayerPermissionData(player.getUniqueId());
+                //         if (!playerPermData.hasTempGroup()) {
+                //             toRemove.add(player);
+                //             updatePlayerPermission(player);
+                //             checkHook(player.getUniqueId(), playerPermData);
+                //         }
+
+                //     } else {
+                //         toRemove.add(player);
+                //     }
+                // }
+
+                // toRemove.forEach(player -> toCheckTemp.remove(player));
             }
-            
-        }, 20*2, 20);
+
+        }, 20 * 2, 5);
 
         Bukkit.getScheduler().runTaskLater(plugin, new Runnable() {
 
             @Override
             public void run() {
-               for(Player player : Bukkit.getOnlinePlayers()) {
+                for (Player player : Bukkit.getOnlinePlayers()) {
                     updatePlayerPermission(player);
-               } 
+                }
             }
-            
-        }, 20*1);
+
+        }, 20 * 1);
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
             @Override
@@ -94,11 +129,17 @@ public class PermissionHandler {
         });
     }
 
+    public void addGroupChangeHook(UUID targetUUID, Consumer<PlayerPermissionData> playerPermissionDataHook) {
+        groupChangeHook.putIfAbsent(targetUUID, new ArrayList<>());
+
+        groupChangeHook.get(targetUUID).add(playerPermissionDataHook);
+    }
+
     private void checkPlayerExist(Player player) {
         PlayerPermissionData ppD = this.getPlayerPermissionData(player.getUniqueId());
-        if(ppD == null) {
+        if (ppD == null) {
             ppD = setGroup(player.getUniqueId(), "Default");
-        }    
+        }
         ppD.setName(player.getName());
 
         final PlayerPermissionData toSave = ppD;
@@ -106,12 +147,12 @@ public class PermissionHandler {
 
             @Override
             public void run() {
-                toSave.saveToPlayerFile(new File(plugin.getDataFolder(), "players/"+toSave.getUuid()+".yml"));
+                toSave.saveToPlayerFile(new File(plugin.getDataFolder(), "players/" + toSave.getUuid() + ".yml"));
             }
-            
+
         });
-    
-    }  
+
+    }
 
     public void updatePlayerPermission(Player player) {
         checkPlayerExist(player);
@@ -119,7 +160,7 @@ public class PermissionHandler {
         Set<PermissionAttachmentInfo> effectivePerms = player.getEffectivePermissions();
         ArrayList<PermissionAttachment> toRemove = new ArrayList<>();
         effectivePerms.forEach(atachInfo -> {
-            
+
             PermissionAttachment attachment = atachInfo.getAttachment();
             if (attachment != null) {
                 if (attachment.getPlugin().equals(this.plugin)) {
@@ -134,12 +175,12 @@ public class PermissionHandler {
 
         Set<String> newPermissions = getEffectivePermissions(player.getUniqueId());
 
-        if(newPermissions.contains("*")) {
+        if (newPermissions.contains("*")) {
             Bukkit.getPluginManager().getPermissions().forEach(perm -> {
                 player.addAttachment(plugin, perm.getName(), true);
             });
         }
-        if(newPermissions.contains("-*")) {
+        if (newPermissions.contains("-*")) {
             Bukkit.getPluginManager().getPermissions().forEach(perm -> {
                 player.addAttachment(plugin, perm.getName(), false);
             });
@@ -155,8 +196,8 @@ public class PermissionHandler {
         player.updateCommands();
 
         PlayerPermissionData playerPermData = this.getPlayerPermissionData(player.getUniqueId());
-        if(playerPermData != null) {
-            if(playerPermData.hasTempGroup()) {
+        if (playerPermData != null) {
+            if (playerPermData.hasTempGroup()) {
                 this.toCheckTemp.add(player);
             }
         }
@@ -250,7 +291,7 @@ public class PermissionHandler {
         for (File file : files) {
             loadGroup(file);
         }
-        if(this.getGroupByGroupName("Default") == null) {
+        if (this.getGroupByGroupName("Default") == null) {
             createDefaultGroup();
             File file = new File(this.plugin.getDataFolder(), "groups/default.yml");
             loadGroup(file);
@@ -342,6 +383,14 @@ public class PermissionHandler {
         return group;
     }
 
+    private void checkHook(UUID uuid, PlayerPermissionData playerPermissionData) {
+        if (this.groupChangeHook.containsKey(uuid)) {
+            for (Consumer<PlayerPermissionData> list : this.groupChangeHook.get(uuid)) {
+                list.accept(playerPermissionData);
+            }
+        }
+    }
+
     public PlayerPermissionData setGroup(UUID uuid, String group) {
         PlayerPermissionData playerData = this.getPlayerPermissionData(uuid);
         Player player = Bukkit.getPlayer(uuid);
@@ -356,6 +405,8 @@ public class PermissionHandler {
         if (player != null) {
             this.updatePlayerPermission(player);
         }
+
+        checkHook(uuid, playerData);
 
         return playerData;
     }
@@ -377,6 +428,8 @@ public class PermissionHandler {
         if (player != null) {
             this.updatePlayerPermission(player);
         }
+
+        checkHook(uuid, playerData);
 
         return playerData;
     }

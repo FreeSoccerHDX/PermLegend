@@ -120,7 +120,7 @@ public class PermissionCommand extends CustomCommand {
 
     private void addSetSignDisplayCommand() {
         apply("setSignDisplay", new Arg().apply(playerNameOrUUIDProvider, new CommandListener(
-                "Sets the Sign your looking at to a SignDisplay that shows the Playername and his Rank", argMap -> {
+                "Sets the Sign your looking at to a SignDisplay that shows the Playername and his Group", argMap -> {
                     if (argMap.getSender() instanceof Player player) {
                         String playerNameOrUUID = argMap.getArgument("<Player>");
                         UUID uuid = getUUIDFromInput(player, playerNameOrUUID);
@@ -133,12 +133,12 @@ public class PermissionCommand extends CustomCommand {
                             if(block != null) {
                                 if(Tag.ALL_SIGNS.isTagged(block.getType())) {
                                     this.signDisplays.addSign(playerPermissionData.getUuid(), block);
-                                    player.sendMessage("erfolg");
+                                    player.sendMessage(this.messageConfig.getCommandSetSignDisplaySuccess());
                                 } else {
-                                    player.sendMessage("kein sign");
+                                    player.sendMessage(this.messageConfig.getCommandSetSignDisplayNotASign());
                                 }
                             } else {
-                                player.sendMessage("kein erfolg -> block nicht gefunden");
+                                player.sendMessage(this.messageConfig.getCommandSetSignDisplayNotASign());
                             }
                         } else {
                             playerNotFound(player, playerNameOrUUID);

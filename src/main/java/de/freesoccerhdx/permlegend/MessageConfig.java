@@ -42,6 +42,9 @@ public class MessageConfig {
     private String commandSetGroupChanged = "&aThe Group of the Player has changed.";
     private String commandSetTempGroupFailed = "&cSomething went wrong! Did you use the correct input ?";
 
+    private String commandSetSignDisplaySuccess = "&aYou created a Sign-Display.";
+    private String commandSetSignDisplayNotASign = "&cThe Block your looking at is air or not a Sign.";
+
     private final Plugin plugin;
 
     public MessageConfig(Plugin plugin) {
@@ -224,6 +227,14 @@ public class MessageConfig {
 
     public String getCommandSetTempGroupFailed() {
         return Methods.replaceColorCodes(commandSetTempGroupFailed);
+    }
+
+    public String getCommandSetSignDisplaySuccess() {
+        return Methods.replaceColorCodes(commandSetSignDisplaySuccess);
+    }
+
+    public String getCommandSetSignDisplayNotASign() {
+        return Methods.replaceColorCodes(commandSetSignDisplayNotASign);
     }
 
 
