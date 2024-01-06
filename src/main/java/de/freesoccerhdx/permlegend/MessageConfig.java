@@ -87,6 +87,9 @@ public class MessageConfig {
                 commandSetGroupChanged = cfg.getString("cmd.set-group-changed");
                 commandSetTempGroupFailed = cfg.getString("cmd.set-temp-group");
 
+                commandSetSignDisplaySuccess = cfg.getString("cmd.set-signdisplay-success");
+                commandSetSignDisplayNotASign = cfg.getString("cmd.set-signdisplay-not-a-sign");
+
             } catch(Exception exception) {
                 exception.printStackTrace();
             }
@@ -113,6 +116,8 @@ public class MessageConfig {
             cfg.set("cmd.has-not-perm", commandHasNotPerm);
             cfg.set("cmd.set-group-changed", commandSetGroupChanged);
             cfg.set("cmd.set-temp-group", commandSetTempGroupFailed);
+            cfg.set("cmd.set-signdisplay-success", commandSetSignDisplaySuccess);
+            cfg.set("cmd.set-signdisplay-not-a-sign", commandSetSignDisplayNotASign);
 
             try {
                 cfg.save(cfgFile);
