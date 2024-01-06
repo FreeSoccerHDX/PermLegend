@@ -1,16 +1,20 @@
 # PermLegend
     Kleines aber feines Plugin für die Verwaltung von Permissions innerhalb von Gruppen.
-    Dieses Plugin erlaubt eine sehr umfangreiche steuerung der Gruppen und anderen Funktionen durch eine große Vielfalt von Commands.
+    Dieses Plugin erlaubt eine sehr umfangreiche steuerung der Gruppen
+    und anderen Funktionen durch eine große Vielfalt von Commands.
     
 ### Gruppen
-    Standardmäig wird die Gruppe "Default" erstellt und alle Spieler haben, sofern nicht anders gesetzt diese Gruppe.
-    Weitere Gruppen können jederzeit per Command (Console/Spieler) erstellt und gesteuert werden.
+    Standardmäig wird die Gruppe "Default" erstellt und alle Spieler haben,
+    sofern nicht anders gesetzt diese Gruppe.
+    Weitere Gruppen können jederzeit per Command (Console/Spieler)
+    erstellt und gesteuert werden.
 
     Gruppen haben folgende Features:
     - Prefix (Wird im Chat / beim Joinen im Chat angezeigt)
     - Suffix (Wird im Chat hinter der Spieler Nachricht angezeigt)
     - ChatColor (Die Nachrichten des Spielers sind automatisch in dieser Farbe)
-    - Permissions (Permissions können per Command oder per Config-Bearbeitung geändert werden, Spieler erhalten direkt automatisch beim Joinen alle Permissions)
+    - Permissions (Permissions können per Command oder per Config-Bearbeitung geändert werden
+      Spieler erhalten direkt automatisch beim Joinen alle Permissions)
     - Sibling (Vererbte Permissions: Permissions der Sibling-Gruppe)
 
 ### SignDisplays
@@ -19,8 +23,10 @@
 
 
 ### Nachrichten
-    Alle Nachrichten, wie z.B. beim Joinen, bei Chat-Nachrichten, oder bei Commands, können durch die Configurations-Datei angepasst werden.
-    Nachrichten sowie Prefix oder Suffix Nachrichten können mit dem Color-System von Minecraft genutzt werden. z.B.: &4 -> Rot, &2 -> Grün.
+    Alle Nachrichten, wie z.B. beim Joinen, bei Chat-Nachrichten, oder bei Commands,
+    können durch die Configurations-Datei angepasst werden.
+    Nachrichten sowie Prefix oder Suffix Nachrichten können mit dem Color-System von
+    Minecraft genutzt werden. z.B.: &4 -> Rot, &2 -> Grün.
 
 ### Permissions
     Die Permissions basieren auf dem exestierenden Vanilla-Permissions-System, was bedeutet:
@@ -30,7 +36,9 @@
     - Permissions die mit '-' anfangen werden ebenfalls dem Spieler entzogen
 
 ### Commands
-    Das Argument '<Group>' kann genutzt werden um exestierende Gruppen auszuwählen. Bei dem Befehl '/permission createGroup <Group> "Prefix"' werden zwar die exestierenden Gruppen als Vorschau angezeigt, aber können nicht mit dem gleichen Namen erstellt werden.
+    Das Argument '<Group>' kann genutzt werden um exestierende Gruppen auszuwählen.
+    Bei dem Befehl '/permission createGroup <Group> "Prefix"' werden zwar die
+    exestierenden Gruppen als Vorschau angezeigt, aber können nicht mit dem gleichen Namen erstellt werden.
 
     Das Argument 'Player' akzeptiert entweder Spielernamen, mit einer Zeichenlänge von 16 oder weniger - oder eine UUID im Format '9a25bce6-eb7d-48e8-8d46-a54d526b6f18'
     - Bei einem Spielername muss der Spieler Online sein

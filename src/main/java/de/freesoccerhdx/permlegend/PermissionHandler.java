@@ -94,7 +94,28 @@ public class PermissionHandler {
         });
     }
 
+    private void checkPlayerExist(Player player) {
+        PlayerPermissionData ppD = this.getPlayerPermissionData(player.getUniqueId());
+        if(ppD == null) {
+            ppD = setGroup(player.getUniqueId(), "Default");
+        }    
+        ppD.setName(player.getName());
+
+        final PlayerPermissionData toSave = ppD;
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
+
+            @Override
+            public void run() {
+                toSave.saveToPlayerFile(new File(plugin.getDataFolder(), "players/"+toSave.getUuid()+".yml"));
+            }
+            
+        });
+    
+    }  
+
     public void updatePlayerPermission(Player player) {
+        checkPlayerExist(player);
+
         Set<PermissionAttachmentInfo> effectivePerms = player.getEffectivePermissions();
         ArrayList<PermissionAttachment> toRemove = new ArrayList<>();
         effectivePerms.forEach(atachInfo -> {
@@ -227,6 +248,11 @@ public class PermissionHandler {
             return;
         }
         for (File file : files) {
+            loadGroup(file);
+        }
+        if(this.getGroupByGroupName("Default") == null) {
+            createDefaultGroup();
+            File file = new File(this.plugin.getDataFolder(), "groups/default.yml");
             loadGroup(file);
         }
     }
