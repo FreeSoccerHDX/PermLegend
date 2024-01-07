@@ -90,7 +90,7 @@ public class SQLDatabase {
 
                 UUID uuid = UUID.fromString(uuids);
 
-                System.out.println(primaryID + ", " + uuid + ", " + name + ", " + groupName + ", " + tempGroupName + ", " + tempGroupEnd);
+                // System.out.println(primaryID + ", " + uuid + ", " + name + ", " + groupName + ", " + tempGroupName + ", " + tempGroupEnd);
                 playerPermissionData.put(uuid, new PlayerPermissionData(uuid, name, groupName, tempGroupName, tempGroupEnd));
             }
         }
