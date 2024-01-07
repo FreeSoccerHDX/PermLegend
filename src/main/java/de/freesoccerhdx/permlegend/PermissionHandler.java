@@ -24,18 +24,19 @@ import javax.annotation.Nonnull;
 public class PermissionHandler {
 
     private HashMap<String, PermissionGroup> permissionGroups = new HashMap<>();
-    private HashMap<UUID, PlayerPermissionData> playerPermissionDatas = new HashMap<>();
+    // private HashMap<UUID, PlayerPermissionData> playerPermissionDatas = new
+    // HashMap<>();
     private HashMap<UUID, List<Consumer<PlayerPermissionData>>> groupChangeHook = new HashMap<>();
 
     private final Plugin plugin;
+    private final SQLDatabase sqlDatabase;
 
-    private ArrayList<Player> toCheckTemp;
-
+    private ArrayList<Player> toCheckTemp = new ArrayList<>();
     private Queue<Runnable> tasks = new ArrayDeque<>();
 
-    public PermissionHandler(Plugin plugin) {
+    public PermissionHandler(Plugin plugin, SQLDatabase sqlDatabase) {
         this.plugin = plugin;
-        this.toCheckTemp = new ArrayList<>();
+        this.sqlDatabase = sqlDatabase;
 
         Bukkit.getScheduler().runTaskTimer(plugin, new Runnable() {
 
@@ -51,8 +52,9 @@ public class PermissionHandler {
                     } else {
                         for (Player player : toCheckTemp) {
                             tasks.add(() -> {
-                                 if (player.isValid()) {
-                                    PlayerPermissionData playerPermData = getPlayerPermissionData(player.getUniqueId());
+                                if (player.isValid()) {
+                                    PlayerPermissionData playerPermData = sqlDatabase
+                                            .getPlayerPermissionData(player.getUniqueId());
                                     if (!playerPermData.hasTempGroup()) {
                                         toCheckTemp.remove(player);
                                         updatePlayerPermission(player);
@@ -67,23 +69,6 @@ public class PermissionHandler {
                         break;
                     }
                 }
-
-                // ArrayList<Player> toRemove = new ArrayList<>();
-                // for (Player player : toCheckTemp) {
-                //     if (player.isValid()) {
-                //         PlayerPermissionData playerPermData = getPlayerPermissionData(player.getUniqueId());
-                //         if (!playerPermData.hasTempGroup()) {
-                //             toRemove.add(player);
-                //             updatePlayerPermission(player);
-                //             checkHook(player.getUniqueId(), playerPermData);
-                //         }
-
-                //     } else {
-                //         toRemove.add(player);
-                //     }
-                // }
-
-                // toRemove.forEach(player -> toCheckTemp.remove(player));
             }
 
         }, 20 * 2, 5);
@@ -114,17 +99,6 @@ public class PermissionHandler {
                 if (folder.isDirectory()) {
                     loadGroups();
                 }
-
-                File playerFolder = new File(plugin.getDataFolder(), "players/");
-                if (!playerFolder.exists()) {
-                    boolean s = playerFolder.mkdirs();
-                    if (!s) {
-                        plugin.getLogger().warning("Couldn't create Path: '" + playerFolder.getPath() + "'");
-                    }
-                }
-                if (playerFolder.isDirectory()) {
-                    loadPlayerData();
-                }
             }
         });
     }
@@ -136,21 +110,23 @@ public class PermissionHandler {
     }
 
     private void checkPlayerExist(Player player) {
-        PlayerPermissionData ppD = this.getPlayerPermissionData(player.getUniqueId());
+        PlayerPermissionData ppD = this.sqlDatabase.getPlayerPermissionData(player.getUniqueId());
+        boolean save = false;
         if (ppD == null) {
             ppD = setGroup(player.getUniqueId(), "Default");
+            save = true;
         }
-        ppD.setName(player.getName());
+        if (!ppD.getPlayerName().equals(player.getName())) {
+            ppD.setPlayerName(player.getName());
+            save = true;
+        }
 
-        final PlayerPermissionData toSave = ppD;
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
-
-            @Override
-            public void run() {
-                toSave.saveToPlayerFile(new File(plugin.getDataFolder(), "players/" + toSave.getUuid() + ".yml"));
-            }
-
-        });
+        if (save) {
+            final PlayerPermissionData toSave = ppD;
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                sqlDatabase.savePlayerData(toSave);
+            });
+        }
 
     }
 
@@ -195,7 +171,7 @@ public class PermissionHandler {
         });
         player.updateCommands();
 
-        PlayerPermissionData playerPermData = this.getPlayerPermissionData(player.getUniqueId());
+        PlayerPermissionData playerPermData = this.sqlDatabase.getPlayerPermissionData(player.getUniqueId());
         if (playerPermData != null) {
             if (playerPermData.hasTempGroup()) {
                 this.toCheckTemp.add(player);
@@ -206,7 +182,7 @@ public class PermissionHandler {
     public Set<String> getEffectivePermissions(UUID uuid) {
         HashSet<String> effectivePerms = new HashSet<>();
 
-        PlayerPermissionData playerData = this.playerPermissionDatas.get(uuid);
+        PlayerPermissionData playerData = this.sqlDatabase.getPlayerPermissionData(uuid);
 
         if (playerData != null && playerData.hasAdditionalPermissions()) {
             effectivePerms.addAll(playerData.getAdditionalPermissions());
@@ -218,62 +194,10 @@ public class PermissionHandler {
         return effectivePerms;
     }
 
-    private void loadPlayerData() {
-        File folder = new File(plugin.getDataFolder(), "players/");
-        if (!folder.exists() || !folder.isDirectory()) {
-            return;
-        }
-        File[] files = folder.listFiles((dir, name) -> name.toLowerCase().endsWith(".yml"));
-        if (files == null) {
-            return;
-        }
-        for (File file : files) {
-            loadPlayerData(file);
-        }
-    }
-
-    private void loadPlayerData(File playerFile) {
-        YamlConfiguration cfg = new YamlConfiguration();
-        try {
-            cfg.load(playerFile);
-
-            String name = cfg.getString("Name");
-            String _uuid = cfg.getString("UUID");
-            UUID uuid = UUID.fromString(_uuid);
-
-            String groupName = cfg.getString("Group");
-
-            ArrayList<String> permissions = new ArrayList<>();
-
-            if (cfg.isSet("Permissions")) {
-                Object obj = cfg.get("Permissions");
-                if (obj instanceof ArrayList<?>) {
-                    permissions = (ArrayList<String>) obj;
-                }
-            }
-
-            PlayerPermissionData playerPermissionData = new PlayerPermissionData(uuid, name, groupName);
-
-            playerPermissionData.setAdditionalPermissions(permissions);
-
-            if (cfg.isSet("tempGroup") && cfg.isSet("tempGroupEnd")) {
-                String tempGroupName = cfg.getString("groupName");
-                Long tempGroupEnd = cfg.getLong("tempGroupEnd");
-                if (tempGroupEnd > System.currentTimeMillis()) {
-                    playerPermissionData.setTempGroup(tempGroupName, tempGroupEnd);
-                }
-            }
-
-            this.playerPermissionDatas.put(uuid, playerPermissionData);
-
-        } catch (Exception exception) {
-            exception.printStackTrace();
-        }
-    }
-
     public PermissionGroup getGroup(UUID uuid) {
-        if (this.playerPermissionDatas.containsKey(uuid)) {
-            String groupName = this.playerPermissionDatas.get(uuid).getEffectiveGroupName();
+        PlayerPermissionData playerPermissionData = this.sqlDatabase.getPlayerPermissionData(uuid);
+        if (playerPermissionData != null) {
+            String groupName = playerPermissionData.getEffectiveGroupName();
             return permissionGroups.get(groupName);
         }
         return permissionGroups.get("Default");
@@ -358,10 +282,6 @@ public class PermissionHandler {
         return this.permissionGroups.get(groupName);
     }
 
-    public PlayerPermissionData getPlayerPermissionData(UUID uniqueId) {
-        return this.playerPermissionDatas.get(uniqueId);
-    }
-
     public Set<String> getGroupNames() {
         return this.permissionGroups.keySet();
     }
@@ -392,15 +312,18 @@ public class PermissionHandler {
     }
 
     public PlayerPermissionData setGroup(UUID uuid, String group) {
-        PlayerPermissionData playerData = this.getPlayerPermissionData(uuid);
+        PlayerPermissionData playerData = this.sqlDatabase.getPlayerPermissionData(uuid);
         Player player = Bukkit.getPlayer(uuid);
 
         if (playerData == null) {
-            playerData = new PlayerPermissionData(uuid, player == null ? "" : player.getName(), group);
-            this.playerPermissionDatas.put(uuid, playerData);
-        } else {
-            playerData.setGroupName(group);
+            playerData = new PlayerPermissionData(uuid, player == null ? "" : player.getName(), group, "", 0);
         }
+        playerData.setGroupName(group);
+
+        final PlayerPermissionData toSave = playerData;
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            sqlDatabase.savePlayerData(toSave);
+        });
 
         if (player != null) {
             this.updatePlayerPermission(player);
@@ -416,14 +339,18 @@ public class PermissionHandler {
     }
 
     public PlayerPermissionData setTempGroup(UUID uuid, String group, long timestampEnd) {
-        PlayerPermissionData playerData = this.getPlayerPermissionData(uuid);
+        PlayerPermissionData playerData = this.sqlDatabase.getPlayerPermissionData(uuid);
         Player player = Bukkit.getPlayer(uuid);
 
         if (playerData == null) {
-            playerData = new PlayerPermissionData(uuid, player == null ? "" : player.getName(), "Default");
-            this.playerPermissionDatas.put(uuid, playerData);
+            playerData = new PlayerPermissionData(uuid, player == null ? "" : player.getName(), "Default", "", 0);
         }
         playerData.setTempGroup(group, timestampEnd);
+
+        final PlayerPermissionData toSave = playerData;
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            sqlDatabase.savePlayerData(toSave);
+        });
 
         if (player != null) {
             this.updatePlayerPermission(player);

@@ -9,48 +9,24 @@ import org.bukkit.configuration.file.YamlConfiguration;
 public class PlayerPermissionData {
 
     private final UUID uuid;
-    private String name;
+    private String playername;
     private String groupName;
 
     private String tempGroupName = null;
-    private Long tempGroupEnd = null;
+    private long tempGroupEnd = 0;
     private ArrayList<String> additionalPermissions = null;
 
-    public PlayerPermissionData(UUID uuid, String name, String groupName) {
+    public PlayerPermissionData(UUID uuid, String playername, String groupName) {
+        this(uuid, playername, groupName, "", 0);
+    }
+
+    public PlayerPermissionData(UUID uuid, String playername, String groupName, String tempGroupName, long tempGroupEnd) {
         this.uuid = uuid;
-        this.name = name;
+        this.playername = playername;
         this.groupName = groupName;
-    }
-
-    public boolean saveToPlayerFile(File file) {
-        try {
-            YamlConfiguration cfg = new YamlConfiguration();
-
-            cfg.set("Name", this.name);
-            cfg.set("UUID", this.uuid.toString());
-            cfg.set("Group", this.groupName);
-
-            if(tempGroupName != null) {
-                cfg.set("tempGroup", this.tempGroupName);
-                cfg.set("tempGroupEnd", this.tempGroupEnd);
-            } else {
-                cfg.set("tempGroup", "");
-                cfg.set("tempGroupEnd", -1);
-            }
-
-            if(this.additionalPermissions != null) {
-                cfg.set("Permissions", this.additionalPermissions);
-            } else {
-                cfg.set("Permissions", new String[0]);
-            }
-
-            cfg.save(file);
-            return true;
-        } catch (Exception exception) {
-            exception.printStackTrace();
-        }
-        return false;
-    }
+        this.tempGroupName = tempGroupName;
+        this.tempGroupEnd = tempGroupEnd;
+    }   
 
     public String getEffectiveGroupName() {
         if(hasTempGroup()) {
@@ -76,8 +52,8 @@ public class PlayerPermissionData {
         return tempGroupName != null && this.tempGroupEnd > System.currentTimeMillis();
     }
 
-    public void setName(String newName) {
-        this.name = newName;
+    public void setPlayerName(String newPlayername) {
+        this.playername = newPlayername;
     }
     
     public String getGroupName() {
@@ -93,8 +69,8 @@ public class PlayerPermissionData {
         return uuid;
     }
     
-    public String getName() {
-        return name;
+    public String getPlayerName() {
+        return playername;
     }
 
     public boolean hasAdditionalPermissions() {

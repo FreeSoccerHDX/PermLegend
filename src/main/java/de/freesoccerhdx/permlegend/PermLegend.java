@@ -12,16 +12,19 @@ public final class PermLegend extends JavaPlugin implements Listener {
 
     private PermissionHandler permissionHandler;
     private MessageConfig messageConfig;
+    private SQLDatabase sqlDatabase;
+    private SignDisplays signDisplays;
 
     @Override
     public void onEnable() {
 
-        this.permissionHandler = new PermissionHandler(this);
+        this.sqlDatabase = new SQLDatabase(this);
+        this.permissionHandler = new PermissionHandler(this, sqlDatabase);
         this.messageConfig = new MessageConfig(this);
 
-        SignDisplays signDisplays = new SignDisplays(this, messageConfig, permissionHandler);
+        this.signDisplays = new SignDisplays(this, messageConfig, permissionHandler, sqlDatabase);
 
-        PermissionCommand permissionCommand = new PermissionCommand(this, permissionHandler, messageConfig, signDisplays);
+        PermissionCommand permissionCommand = new PermissionCommand(this);
 
         Bukkit.getPluginManager().registerEvents(this, this);
     }
@@ -29,6 +32,22 @@ public final class PermLegend extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
 
+    }
+
+    public PermissionHandler getPermissionHandler() {
+        return permissionHandler;
+    }
+
+    public MessageConfig getMessageConfig() {
+        return messageConfig;
+    }
+
+    public SQLDatabase getSqlDatabase() {
+        return sqlDatabase;
+    }
+
+    public SignDisplays getSignDisplays() {
+        return signDisplays;
     }
 
     @EventHandler

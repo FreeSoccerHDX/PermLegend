@@ -24,23 +24,16 @@ import org.bukkit.plugin.Plugin;
 
 public class PermissionCommand extends CustomCommand {
 
-    private final PermissionHandler permissionHandler;
-    private final MessageConfig messageConfig;
-    private final SignDisplays signDisplays;
-
     private final TypeArgument playerNameOrUUIDProvider;
     private final TypeArgument groupNameProvider;
     private final TypeArgument permissionsProvider;
 
-    private final Plugin plugin;
+    private final PermLegend plugin;
     
 
-    public PermissionCommand(Plugin plugin, PermissionHandler permissionHandler, MessageConfig messageConfig, SignDisplays signDisplays) {
+    public PermissionCommand(PermLegend plugin) {
         super("permission");
         this.plugin = plugin;
-        this.permissionHandler = permissionHandler;
-        this.messageConfig = messageConfig;
-        this.signDisplays = signDisplays;
 
         this.playerNameOrUUIDProvider = new TypeArgument("<Player>") {
 
@@ -68,7 +61,7 @@ public class PermissionCommand extends CustomCommand {
 
             @Override
             public String[] getValidArguments() {
-                return permissionHandler.getGroupNames().toArray(new String[0]);
+                return plugin.getPermissionHandler().getGroupNames().toArray(new String[0]);
             }
         };
 
@@ -126,19 +119,19 @@ public class PermissionCommand extends CustomCommand {
                         UUID uuid = getUUIDFromInput(player, playerNameOrUUID);
                         if(uuid == null) return;
 
-                        PlayerPermissionData playerPermissionData = this.permissionHandler.getPlayerPermissionData(uuid);
+                        PlayerPermissionData playerPermissionData = plugin.getSqlDatabase().getPlayerPermissionData(uuid);
 
                         if(playerPermissionData != null) {
                             Block block = player.getTargetBlockExact(8);
                             if(block != null) {
                                 if(Tag.ALL_SIGNS.isTagged(block.getType())) {
-                                    this.signDisplays.addSign(playerPermissionData.getUuid(), block);
-                                    player.sendMessage(this.messageConfig.getCommandSetSignDisplaySuccess());
+                                    this.plugin.getSignDisplays().addSign(playerPermissionData.getUuid(), block);
+                                    player.sendMessage(this.plugin.getMessageConfig().getCommandSetSignDisplaySuccess());
                                 } else {
-                                    player.sendMessage(this.messageConfig.getCommandSetSignDisplayNotASign());
+                                    player.sendMessage(plugin.getMessageConfig().getCommandSetSignDisplayNotASign());
                                 }
                             } else {
-                                player.sendMessage(this.messageConfig.getCommandSetSignDisplayNotASign());
+                                player.sendMessage(plugin.getMessageConfig().getCommandSetSignDisplayNotASign());
                             }
                         } else {
                             playerNotFound(player, playerNameOrUUID);
@@ -146,7 +139,7 @@ public class PermissionCommand extends CustomCommand {
 
 
                     } else {
-                        argMap.getSender().sendMessage(this.messageConfig.getCommandNotAPlayer());
+                        argMap.getSender().sendMessage(plugin.getMessageConfig().getCommandNotAPlayer());
                     }
                 })));
     }
@@ -192,29 +185,19 @@ public class PermissionCommand extends CustomCommand {
                                     UUID uuid = getUUIDFromInput(cs, playerNameOrUUID);
 
                                     if (uuid != null) {
-                                        if (this.permissionHandler.getGroupByGroupName(group) != null) {
+                                        if (plugin.getPermissionHandler().getGroupByGroupName(group) != null) {
                                             try {
                                                 long seconds = Methods.calculateTimeFromInput(timeInput);
                                                 long end = System.currentTimeMillis() + seconds * 1000;
-                                                PlayerPermissionData permPlayerData = this.permissionHandler
-                                                        .setTempGroup(uuid, group, end);
+                                                plugin.getPermissionHandler().setTempGroup(uuid, group, end);
 
-                                                Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
-                                                    @Override
-                                                    public void run() {
-                                                        permPlayerData.saveToPlayerFile(new File(plugin.getDataFolder(),
-                                                                "players/" + permPlayerData.getUuid() + ".yml"));
-                                                    }
-                                                });
-
-                                                cs.sendMessage(this.messageConfig.getCommandSetGroupChanged());
-
+                                                cs.sendMessage(plugin.getMessageConfig().getCommandSetGroupChanged());
                                             } catch (Exception exception) {
-                                                cs.sendMessage(this.messageConfig.getCommandSetTempGroupFailed());
+                                                cs.sendMessage(plugin.getMessageConfig().getCommandSetTempGroupFailed());
                                             }
 
                                         } else {
-                                            cs.sendMessage(this.messageConfig.getCommandGroupNotExisting(group));
+                                            cs.sendMessage(plugin.getMessageConfig().getCommandGroupNotExisting(group));
                                         }
                                     }
 
@@ -250,20 +233,12 @@ public class PermissionCommand extends CustomCommand {
                     }
 
                     if (uuid != null) {
-                        if (this.permissionHandler.getGroupByGroupName(group) != null) {
-                            PlayerPermissionData permPlayerData = this.permissionHandler.setGroup(uuid, group);
+                        if (plugin.getPermissionHandler().getGroupByGroupName(group) != null) {
+                            plugin.getPermissionHandler().setGroup(uuid, group);
 
-                            Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
-                                @Override
-                                public void run() {
-                                    permPlayerData.saveToPlayerFile(new File(plugin.getDataFolder(),
-                                            "players/" + permPlayerData.getUuid() + ".yml"));
-                                }
-                            });
-
-                            cs.sendMessage(this.messageConfig.getCommandSetGroupChanged());
+                            cs.sendMessage(plugin.getMessageConfig().getCommandSetGroupChanged());
                         } else {
-                            cs.sendMessage(this.messageConfig.getCommandGroupNotExisting(group));
+                            cs.sendMessage(plugin.getMessageConfig().getCommandGroupNotExisting(group));
                         }
                     }
 
@@ -271,40 +246,40 @@ public class PermissionCommand extends CustomCommand {
     }
 
     private void sendInfo(CommandSender sender, UUID target, boolean isOther) {
-        PlayerPermissionData playerPermissionData = this.permissionHandler.getPlayerPermissionData(target);
+        PlayerPermissionData playerPermissionData = plugin.getSqlDatabase().getPlayerPermissionData(target);
         PermissionGroup defaultGroup;
         PermissionGroup tempGroup = null;
         Long tempGroupEnd = null;
 
         if (playerPermissionData == null) {
-            defaultGroup = this.permissionHandler.getGroup(target);
+            defaultGroup = plugin.getPermissionHandler().getGroup(target);
         } else {
-            defaultGroup = this.permissionHandler.getGroupByGroupName(playerPermissionData.getGroupName());
+            defaultGroup = plugin.getPermissionHandler().getGroupByGroupName(playerPermissionData.getGroupName());
 
             if (playerPermissionData.hasTempGroup()) {
-                tempGroup = this.permissionHandler.getGroupByGroupName(playerPermissionData.getTempGroupName());
+                tempGroup = plugin.getPermissionHandler().getGroupByGroupName(playerPermissionData.getTempGroupName());
                 tempGroupEnd = playerPermissionData.getTempGroupEnd();
             }
         }
 
         String playername = target.toString();
         if (playerPermissionData != null) {
-            playername = playerPermissionData.getName();
+            playername = playerPermissionData.getPlayerName();
         }
 
         if (tempGroup == null) {
             if (isOther) {
                 sender.sendMessage(
-                        this.messageConfig.getCommandInfoOtherDefaultGroup(playername, defaultGroup.getName()));
+                        plugin.getMessageConfig().getCommandInfoOtherDefaultGroup(playername, defaultGroup.getName()));
             } else {
-                sender.sendMessage(this.messageConfig.getCommandInfoDefaultGroup(defaultGroup.getName()));
+                sender.sendMessage(plugin.getMessageConfig().getCommandInfoDefaultGroup(defaultGroup.getName()));
             }
         } else {
             if (isOther) {
-                sender.sendMessage(this.messageConfig.getCommandInfoOtherDefaultAndTempGroup(playername,
+                sender.sendMessage(plugin.getMessageConfig().getCommandInfoOtherDefaultAndTempGroup(playername,
                         defaultGroup.getName(), tempGroup.getName(), tempGroupEnd));
             } else {
-                sender.sendMessage(this.messageConfig.getCommandInfoDefaultAndTempGroup(defaultGroup.getName(),
+                sender.sendMessage(plugin.getMessageConfig().getCommandInfoDefaultAndTempGroup(defaultGroup.getName(),
                         tempGroup.getName(), tempGroupEnd));
             }
         }
@@ -319,7 +294,7 @@ public class PermissionCommand extends CustomCommand {
                         if (argMap.getSender() instanceof Player player) {
                             sendInfo(player, player.getUniqueId(), false);
                         } else {
-                            argMap.getSender().sendMessage(this.messageConfig.getCommandNotAPlayer());
+                            argMap.getSender().sendMessage(plugin.getMessageConfig().getCommandNotAPlayer());
                         }
                     } else {
                         CommandSender cs = argMap.getSender();
@@ -359,7 +334,7 @@ public class PermissionCommand extends CustomCommand {
     private void addListGroupsCommand() {
         this.apply("listGroups", new CommandListener("Lists all existing Groups", argMap -> {
             argMap.getSender().sendMessage(
-                    this.messageConfig.getCommandListGroups(String.join(", ", this.permissionHandler.getGroupNames())));
+                    plugin.getMessageConfig().getCommandListGroups(String.join(", ", plugin.getPermissionHandler().getGroupNames())));
         }));
     }
 
@@ -372,12 +347,12 @@ public class PermissionCommand extends CustomCommand {
                                     String groupname = argMap.getArgument("<Group>");
                                     String prefix = argMap.getArgument("\"Prefix\"");
 
-                                    if (this.permissionHandler.getGroupByGroupName(groupname) == null) {
-                                        PermissionGroup group = this.permissionHandler.createNewGroup(groupname,
+                                    if (plugin.getPermissionHandler().getGroupByGroupName(groupname) == null) {
+                                        PermissionGroup group = plugin.getPermissionHandler().createNewGroup(groupname,
                                                 prefix.substring(1, prefix.length() - 1), new ArrayList<>());
-                                        cs.sendMessage(this.messageConfig.getCommandGroupCreated(group.getName()));
+                                        cs.sendMessage(plugin.getMessageConfig().getCommandGroupCreated(group.getName()));
                                     } else {
-                                        cs.sendMessage(this.messageConfig.getCommandGroupAlreadyExists(groupname));
+                                        cs.sendMessage(plugin.getMessageConfig().getCommandGroupAlreadyExists(groupname));
                                     }
 
                                 }))));
@@ -388,7 +363,7 @@ public class PermissionCommand extends CustomCommand {
                 new CommandListener("Shows some information about the Group", argMap -> {
                     CommandSender cs = argMap.getSender();
                     String groupname = argMap.getArgument("<Group>");
-                    PermissionGroup group = this.permissionHandler.getGroupByGroupName(groupname);
+                    PermissionGroup group = plugin.getPermissionHandler().getGroupByGroupName(groupname);
 
                     if (group != null) {
                         String name = group.getName();
@@ -398,11 +373,11 @@ public class PermissionCommand extends CustomCommand {
                         String sibling = group.getSiblingGroupName();
                         ArrayList<String> permissions = group.getPermissions();
 
-                        cs.sendMessage(this.messageConfig.getCommandGroupInfo(name, prefix, suffix, chatColor, sibling,
+                        cs.sendMessage(plugin.getMessageConfig().getCommandGroupInfo(name, prefix, suffix, chatColor, sibling,
                                 permissions.size()));
 
                     } else {
-                        cs.sendMessage(this.messageConfig.getCommandGroupNotExisting(groupname));
+                        cs.sendMessage(plugin.getMessageConfig().getCommandGroupNotExisting(groupname));
                     }
                 })));
     }
@@ -414,7 +389,7 @@ public class PermissionCommand extends CustomCommand {
                             CommandSender cs = argMap.getSender();
                             String groupname = argMap.getArgument("<Group>");
                             String prefix = argMap.getArgument("\"Prefix\"");
-                            PermissionGroup group = this.permissionHandler.getGroupByGroupName(groupname);
+                            PermissionGroup group = plugin.getPermissionHandler().getGroupByGroupName(groupname);
 
                             if (group != null) {
                                 group.setPrefix(prefix.substring(1, prefix.length() - 1));
@@ -427,9 +402,9 @@ public class PermissionCommand extends CustomCommand {
                                     }
 
                                 });
-                                cs.sendMessage(this.messageConfig.getCommandGroupUpdated(group.getName()));
+                                cs.sendMessage(plugin.getMessageConfig().getCommandGroupUpdated(group.getName()));
                             } else {
-                                cs.sendMessage(this.messageConfig.getCommandGroupNotExisting(groupname));
+                                cs.sendMessage(plugin.getMessageConfig().getCommandGroupNotExisting(groupname));
                             }
                         }))));
     }
@@ -441,7 +416,7 @@ public class PermissionCommand extends CustomCommand {
                             CommandSender cs = argMap.getSender();
                             String groupname = argMap.getArgument("<Group>");
                             String suffix = argMap.getArgument("\"Suffix\"");
-                            PermissionGroup group = this.permissionHandler.getGroupByGroupName(groupname);
+                            PermissionGroup group = plugin.getPermissionHandler().getGroupByGroupName(groupname);
 
                             if (group != null) {
                                 group.setSuffix(suffix.substring(1, suffix.length() - 1));
@@ -454,9 +429,9 @@ public class PermissionCommand extends CustomCommand {
                                     }
 
                                 });
-                                cs.sendMessage(this.messageConfig.getCommandGroupUpdated(group.getName()));
+                                cs.sendMessage(plugin.getMessageConfig().getCommandGroupUpdated(group.getName()));
                             } else {
-                                cs.sendMessage(this.messageConfig.getCommandGroupNotExisting(groupname));
+                                cs.sendMessage(plugin.getMessageConfig().getCommandGroupNotExisting(groupname));
                             }
                         }))));
     }
@@ -481,7 +456,7 @@ public class PermissionCommand extends CustomCommand {
                     CommandSender cs = argMap.getSender();
                     String groupname = argMap.getArgument("<Group>");
                     String chatcolor = argMap.getArgument("<Color>");
-                    PermissionGroup group = this.permissionHandler.getGroupByGroupName(groupname);
+                    PermissionGroup group = plugin.getPermissionHandler().getGroupByGroupName(groupname);
 
                     if (group != null) {
                         group.setChatMessageColor(chatcolor);
@@ -494,9 +469,9 @@ public class PermissionCommand extends CustomCommand {
                             }
 
                         });
-                        cs.sendMessage(this.messageConfig.getCommandGroupUpdated(group.getName()));
+                        cs.sendMessage(plugin.getMessageConfig().getCommandGroupUpdated(group.getName()));
                     } else {
-                        cs.sendMessage(this.messageConfig.getCommandGroupNotExisting(groupname));
+                        cs.sendMessage(plugin.getMessageConfig().getCommandGroupNotExisting(groupname));
                     }
                 }))));
     }
@@ -507,7 +482,7 @@ public class PermissionCommand extends CustomCommand {
                     CommandSender cs = argMap.getSender();
                     String groupname = argMap.getArgument("<Group>");
                     String permission = argMap.getArgument("<Permission>");
-                    PermissionGroup group = this.permissionHandler.getGroupByGroupName(groupname);
+                    PermissionGroup group = plugin.getPermissionHandler().getGroupByGroupName(groupname);
 
                     if (group != null) {
                         group.addPermission(permission);
@@ -520,9 +495,9 @@ public class PermissionCommand extends CustomCommand {
                             }
 
                         });
-                        cs.sendMessage(this.messageConfig.getCommandGroupUpdated(group.getName()));
+                        cs.sendMessage(plugin.getMessageConfig().getCommandGroupUpdated(group.getName()));
                     } else {
-                        cs.sendMessage(this.messageConfig.getCommandGroupNotExisting(groupname));
+                        cs.sendMessage(plugin.getMessageConfig().getCommandGroupNotExisting(groupname));
                     }
                 }))));
     }
@@ -533,7 +508,7 @@ public class PermissionCommand extends CustomCommand {
                     CommandSender cs = argMap.getSender();
                     String groupname = argMap.getArgument("<Group>");
                     String permission = argMap.getArgument("<Permission>");
-                    PermissionGroup group = this.permissionHandler.getGroupByGroupName(groupname);
+                    PermissionGroup group = plugin.getPermissionHandler().getGroupByGroupName(groupname);
 
                     if (group != null) {
                         group.removePermission(permission);
@@ -546,9 +521,9 @@ public class PermissionCommand extends CustomCommand {
                             }
 
                         });
-                        cs.sendMessage(this.messageConfig.getCommandGroupUpdated(group.getName()));
+                        cs.sendMessage(plugin.getMessageConfig().getCommandGroupUpdated(group.getName()));
                     } else {
-                        cs.sendMessage(this.messageConfig.getCommandGroupNotExisting(groupname));
+                        cs.sendMessage(plugin.getMessageConfig().getCommandGroupNotExisting(groupname));
                     }
                 }))));
     }
@@ -560,7 +535,7 @@ public class PermissionCommand extends CustomCommand {
             String groupname = argMap.getArgument("<Group>");
             int page = argMap.getArgumentAsInt("<Page>").orElseGet(() -> 1);
 
-            PermissionGroup group = this.permissionHandler.getGroupByGroupName(groupname);
+            PermissionGroup group = plugin.getPermissionHandler().getGroupByGroupName(groupname);
 
             if (group != null) {
                 ArrayList<String> permissions = group.getPermissions();
@@ -569,20 +544,20 @@ public class PermissionCommand extends CustomCommand {
                 int maxPage = permissions.size() / 10 + 1;
 
                 if (startIndex > endIndex) {
-                    cs.sendMessage(this.messageConfig.getCommandListPermissionPageNotExist());
+                    cs.sendMessage(plugin.getMessageConfig().getCommandListPermissionPageNotExist());
                 } else {
                     List<String> subPerms = permissions.subList(startIndex, endIndex);
-                    cs.sendMessage(this.messageConfig.getCommandListPermissionHeader(group.getName(),
+                    cs.sendMessage(plugin.getMessageConfig().getCommandListPermissionHeader(group.getName(),
                             permissions.size(), page, maxPage));
                     int c = startIndex + 1;
                     for (String s : subPerms) {
-                        cs.sendMessage(this.messageConfig.getCommandListPermissionInfo(c, s));
+                        cs.sendMessage(plugin.getMessageConfig().getCommandListPermissionInfo(c, s));
                         c++;
                     }
                 }
 
             } else {
-                cs.sendMessage(this.messageConfig.getCommandGroupNotExisting(groupname));
+                cs.sendMessage(plugin.getMessageConfig().getCommandGroupNotExisting(groupname));
             }
 
         });
@@ -606,9 +581,9 @@ public class PermissionCommand extends CustomCommand {
                                     if (onlinePlayer != null) {
                                         boolean hasPerm = onlinePlayer.hasPermission(permission);
                                         if (hasPerm) {
-                                            cs.sendMessage(this.messageConfig.getCommandHasPerm());
+                                            cs.sendMessage(plugin.getMessageConfig().getCommandHasPerm());
                                         } else {
-                                            cs.sendMessage(this.messageConfig.getCommandHasNotPerm());
+                                            cs.sendMessage(plugin.getMessageConfig().getCommandHasNotPerm());
                                         }
                                     } else {
                                         playerNotFound(cs, player);
@@ -620,12 +595,12 @@ public class PermissionCommand extends CustomCommand {
                                 // UUID
                                 try {
                                     UUID uuid = UUID.fromString(player);
-                                    Set<String> effectivePerms = this.permissionHandler.getEffectivePermissions(uuid);
+                                    Set<String> effectivePerms = plugin.getPermissionHandler().getEffectivePermissions(uuid);
 
                                     if (effectivePerms.contains(permission)) {
-                                        cs.sendMessage(this.messageConfig.getCommandHasPerm());
+                                        cs.sendMessage(plugin.getMessageConfig().getCommandHasPerm());
                                     } else {
-                                        cs.sendMessage(this.messageConfig.getCommandHasNotPerm());
+                                        cs.sendMessage(plugin.getMessageConfig().getCommandHasNotPerm());
                                     }
 
                                 } catch (Exception exception) {
@@ -637,7 +612,7 @@ public class PermissionCommand extends CustomCommand {
     }
 
     private void playerNotFound(CommandSender sender, String playerNameUUID) {
-        sender.sendMessage(this.messageConfig.getCommandPlayerNotFoundByNameOrUUID(playerNameUUID));
+        sender.sendMessage(plugin.getMessageConfig().getCommandPlayerNotFoundByNameOrUUID(playerNameUUID));
     }
 
 }

@@ -26,6 +26,7 @@ public class SignDisplays {
 
     private final Plugin plugin;
     private final PermissionHandler permissionHandler;
+    private final SQLDatabase sqlDatabase;
 
     private ArrayList<SignDisplayData> signPositions = new ArrayList<>();
 
@@ -34,9 +35,10 @@ public class SignDisplays {
 
     private Queue<Runnable> tasks = new ArrayDeque<>();
 
-    public SignDisplays(Plugin plugin, MessageConfig messageConfig, PermissionHandler permissionHandler) {
+    public SignDisplays(Plugin plugin, MessageConfig messageConfig, PermissionHandler permissionHandler, SQLDatabase sqlDatabase) {
         this.plugin = plugin;
         this.permissionHandler = permissionHandler;
+        this.sqlDatabase = sqlDatabase;
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, new Runnable() {
 
@@ -175,21 +177,6 @@ public class SignDisplays {
         }
     }
 
-    private void tryToSpawnAll() {
-        ArrayList<SignDisplayData> toRem = new ArrayList<>();
-
-        for (SignDisplayData signDisplayData : unspawnedSignPositions) {
-            if (updateSignDisplayData(signDisplayData, null)) {
-                toRem.add(signDisplayData);
-                spawnedSignPositions.add(signDisplayData);
-            }
-        }
-
-        for (SignDisplayData sDD : toRem) {
-            unspawnedSignPositions.remove(sDD);
-        }
-    }
-
     private boolean updateSignDisplayData(SignDisplayData signDisplayData,
             @Nullable PlayerPermissionData playerPermissionData) {
         String worldname = signDisplayData.getWorld();
@@ -205,7 +192,7 @@ public class SignDisplays {
                     Sign sign = (Sign) block.getState();
                     UUID uuid = signDisplayData.getOwnerUUID();
                     if (playerPermissionData == null) {
-                        playerPermissionData = this.permissionHandler.getPlayerPermissionData(uuid);
+                        playerPermissionData = this.sqlDatabase.getPlayerPermissionData(uuid);
                     }
                     if (playerPermissionData != null) {
                         if (playerPermissionData.getUuid().equals(signDisplayData.getOwnerUUID())) {
@@ -215,7 +202,7 @@ public class SignDisplays {
                                 SignSide side = sign.getSide(Side.FRONT);
                                 side.setLine(0, "");
                                 side.setLine(1, Methods.replaceColorCodes(permissionGroup.getPrefix()));
-                                side.setLine(2, playerPermissionData.getName());
+                                side.setLine(2, playerPermissionData.getPlayerName());
                                 if(playerPermissionData.hasTempGroup()) {
                                     side.setLine(3, Methods.secondsToCountdown((playerPermissionData.getTempGroupEnd()-System.currentTimeMillis())/1000));
                                 } else {
